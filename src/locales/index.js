@@ -1,0 +1,116 @@
+export default {
+  uk: {
+    app: {
+      title: 'MultiDub',
+      subtitle: 'AI-Платформа для дублювання аудіо',
+    },
+    main: {
+      selectMethod: 'Оберіть спосіб додавання аудіо',
+      selectMethodDesc: 'Завантажте файл або запишіть голос',
+      uploadFile: 'Завантажити файл',
+      recordVoice: 'Записати голос',
+    },
+    player: {
+      fromRecording: 'Запис з мікрофону',
+      changeFile: 'Змінити файл',
+      loading: 'Завантаження аудіо...',
+    },
+    settings: {
+      title: 'Налаштування дублювання',
+      startDubbing: 'Розпочати дублювання',
+      languageSettings: 'Налаштування мови',
+    },
+    analysis: {
+      title: 'Аналіз звукової доріжки',
+      readyForAnalysis: 'Файл готовий до аналізу',
+      type: 'Тип',
+      size: 'Розмір',
+      name: 'Назва',
+      analyzing: 'Аналіз...',
+      analyzeButton: 'Проаналізувати звукову доріжку',
+      completed: 'Завершено',
+      error: 'Помилка',
+      completedAlert: 'Аналіз звукової доріжки завершено!',
+      info: 'Інформація',
+      source: 'Джерело',
+      fromRecording: 'Запис з мікрофону',
+      fromUpload: 'Завантажений файл',
+      errorAlert: 'Помилка при аналізі звукової доріжки',
+    },
+    footer: {
+      description: 'MultiDub - AI Платформа для дублювання аудіо',
+    },
+    upload: {
+      dropHere: 'Відпустіть файл тут',
+      dragFile: 'Перетягніть аудіофайл сюди',
+      clickToSelect: 'або натисніть для вибору файлу',
+      errors: {
+        notAudio: 'Будь ласка, завантажте аудіофайл',
+        tooLarge: 'Файл занадто великий. Максимальний розмір: 100MB',
+      },
+    },
+    recorder: {
+      title: 'Запис голосу',
+      useRecording: 'Використати запис',
+      browserNotSupported: 'Ваш браузер не підтримує запис аудіо',
+      microphoneAccessError: 'Не вдалося отримати доступ до мікрофону',
+    },
+  },
+  en: {
+    app: {
+      title: 'MultiDub',
+      subtitle: 'AI-Powered Audio Dubbing',
+    },
+    main: {
+      selectMethod: 'Choose audio input method',
+      selectMethodDesc: 'Upload a file or record your voice',
+      uploadFile: 'Upload file',
+      recordVoice: 'Record voice',
+    },
+    player: {
+      fromRecording: 'From microphone',
+      changeFile: 'Change file',
+      loading: 'Loading audio...',
+    },
+    settings: {
+      title: 'Dubbing settings',
+      startDubbing: 'Start dubbing',
+      languageSettings: 'Language settings',
+    },
+    analysis: {
+      title: 'Audio track analysis',
+      readyForAnalysis: 'File ready for analysis',
+      type: 'Type',
+      size: 'Size',
+      name: 'Name',
+      analyzing: 'Analyzing...',
+      analyzeButton: 'Analyze audio track',
+      completed: 'Completed',
+      error: 'Error',
+      completedAlert: 'Audio track analysis completed!',
+      info: 'Information',
+      source: 'Source',
+      fromRecording: 'From microphone',
+      fromUpload: 'Uploaded file',
+      errorAlert: 'Error analyzing audio track',
+    },
+    footer: {
+      description: 'MultiDub - AI Audio Dubbing Platform',
+    },
+    upload: {
+      dropHere: 'Drop file here',
+      dragFile: 'Drag audio file here',
+      clickToSelect: 'or click to select file',
+      errors: {
+        notAudio: 'Please upload an audio file',
+        tooLarge: 'File is too large. Maximum size: 100MB',
+      },
+    },
+    recorder: {
+      title: 'Voice Recording',
+      useRecording: 'Use Recording',
+      browserNotSupported: 'Your browser does not support audio recording',
+      microphoneAccessError: 'Failed to access microphone',
+    },
+  },
+}

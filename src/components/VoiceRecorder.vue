@@ -1,7 +1,7 @@
 <template>
   <div class="bg-gray-900/50 border border-gray-800 rounded-lg p-6">
     <div class="flex items-center justify-between mb-6">
-      <h3 class="text-lg font-semibold text-gray-100">Запис голосу</h3>
+      <h3 class="text-lg font-semibold text-gray-100">{{ t('recorder.title') }}</h3>
       <div class="flex items-center space-x-2">
         <div v-if="isRecording" class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
         <span v-if="isRecording" class="text-sm text-red-500 font-medium">
@@ -107,13 +107,13 @@
               d="M5 13l4 4L19 7"
             />
           </svg>
-          <span>Використати запис</span>
+          <span>{{ t('recorder.useRecording') }}</span>
         </button>
       </div>
 
       <!-- Error/Info Messages -->
       <div v-if="!isSupported" class="text-sm text-red-400 text-center">
-        Ваш браузер не підтримує запис аудіо
+        {{ t('recorder.browserNotSupported') }}
       </div>
       <div v-if="error" class="text-sm text-red-400 text-center">
         {{ error }}
@@ -124,7 +124,10 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import WaveSurfer from 'wavesurfer.js'
+
+const { t } = useI18n()
 
 const emit = defineEmits(['recording-complete'])
 
@@ -190,7 +193,7 @@ const startRecording = async () => {
     }, 1000)
   } catch (err) {
     console.error('Error starting recording:', err)
-    error.value = 'Не вдалося отримати доступ до мікрофону'
+    error.value = t('recorder.microphoneAccessError')
   }
 }
 

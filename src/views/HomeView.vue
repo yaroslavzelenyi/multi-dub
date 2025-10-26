@@ -17,9 +17,10 @@
                 />
               </svg>
             </div>
-            <h1 class="text-xl font-semibold text-gray-100">MultiDub</h1>
+            <h1 class="text-xl font-semibold text-gray-100">{{ $t('app.title') }}</h1>
           </div>
-          <div class="text-sm text-gray-400">AI-Powered Audio Dubbing</div>
+          <div class="text-sm text-gray-400">{{ $t('app.subtitle') }}</div>
+          <LanguageSwitcher />
         </div>
       </div>
     </header>
@@ -29,8 +30,8 @@
       <!-- Upload/Record Selection -->
       <div v-if="!audioFile" class="flex flex-col items-center justify-center min-h-[60vh]">
         <div class="text-center mb-8">
-          <h2 class="text-3xl font-bold text-gray-100 mb-3">Оберіть спосіб додавання аудіо</h2>
-          <p class="text-gray-400 text-lg">Завантажте файл або запишіть голос</p>
+          <h2 class="text-3xl font-bold text-gray-100 mb-3">{{ $t('main.selectMethod') }}</h2>
+          <p class="text-gray-400 text-lg">{{ $t('main.selectMethodDesc') }}</p>
         </div>
 
         <!-- Tab Selection -->
@@ -44,7 +45,7 @@
                 : 'text-gray-400 hover:text-gray-200',
             ]"
           >
-            Завантажити файл
+            {{ $t('main.uploadFile') }}
           </button>
           <button
             @click="activeTab = 'record'"
@@ -55,7 +56,7 @@
                 : 'text-gray-400 hover:text-gray-200',
             ]"
           >
-            Записати голос
+            {{ $t('main.recordVoice') }}
           </button>
         </div>
 
@@ -98,7 +99,7 @@
                 <p class="text-sm text-gray-400">
                   {{ formatFileSize(audioFileSize) }}
                   <span v-if="isFromRecording" class="text-violet-400 ml-2"
-                    >• Запис з мікрофону</span
+                    >• {{ $t('player.fromRecording') }}</span
                   >
                 </p>
               </div>
@@ -107,7 +108,7 @@
               @click="clearAudio"
               class="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 border border-gray-700 hover:border-gray-600 rounded-lg transition-colors"
             >
-              Змінити файл
+              {{ $t('player.changeFile') }}
             </button>
           </div>
         </div>
@@ -117,7 +118,7 @@
 
         <!-- Actions -->
         <div class="bg-gray-900/50 border border-gray-800 rounded-lg p-6">
-          <h3 class="text-lg font-semibold text-gray-100 mb-4">Налаштування дублювання</h3>
+          <h3 class="text-lg font-semibold text-gray-100 mb-4">{{ $t('settings.title') }}</h3>
 
           <!-- Analysis Section -->
           <div class="mb-6 p-4 bg-gray-950 rounded-lg">
@@ -136,7 +137,7 @@
                     d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
                   />
                 </svg>
-                <span class="text-sm font-medium text-gray-300">Аналіз звукової доріжки</span>
+                <span class="text-sm font-medium text-gray-300">{{ $t('analysis.title') }}</span>
               </div>
               <span
                 v-if="analysisStatus"
@@ -155,18 +156,18 @@
 
             <div class="space-y-3">
               <div class="text-sm text-gray-400">
-                <p class="mb-2">Файл готовий до аналізу:</p>
+                <p class="mb-2">{{ $t('analysis.readyForAnalysis') }}:</p>
                 <div class="bg-gray-900 rounded p-3 font-mono text-xs">
                   <div>
-                    <span class="text-gray-500">Тип:</span>
+                    <span class="text-gray-500">{{ $t('analysis.type') }}:</span>
                     <span class="text-violet-400">{{ audioFile?.type || 'audio/webm' }}</span>
                   </div>
                   <div>
-                    <span class="text-gray-500">Розмір:</span>
+                    <span class="text-gray-500">{{ $t('analysis.size') }}:</span>
                     <span class="text-violet-400">{{ formatFileSize(audioFileSize) }}</span>
                   </div>
                   <div>
-                    <span class="text-gray-500">Назва:</span>
+                    <span class="text-gray-500">{{ $t('analysis.name') }}:</span>
                     <span class="text-violet-400">{{ audioFileName }}</span>
                   </div>
                 </div>
@@ -206,7 +207,9 @@
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                   ></path>
                 </svg>
-                <span>{{ isAnalyzing ? 'Аналіз...' : 'Проаналізувати звукову доріжку' }}</span>
+                <span>{{
+                  isAnalyzing ? $t('analysis.analyzing') : $t('analysis.analyzeButton')
+                }}</span>
               </button>
             </div>
           </div>
@@ -216,12 +219,12 @@
             <button
               class="px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-lg transition-colors"
             >
-              Розпочати дублювання
+              {{ $t('settings.startDubbing') }}
             </button>
             <button
               class="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-gray-100 font-medium rounded-lg transition-colors"
             >
-              Налаштування мови
+              {{ $t('settings.languageSettings') }}
             </button>
           </div>
         </div>
@@ -231,7 +234,7 @@
     <!-- Footer -->
     <footer class="border-t border-gray-800 mt-20">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <p class="text-center text-sm text-gray-500">MultiDub - AI Audio Dubbing Platform</p>
+        <p class="text-center text-sm text-gray-500">{{ $t('footer.description') }}</p>
       </div>
     </footer>
   </div>
@@ -239,9 +242,13 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import FileUpload from '../components/FileUpload.vue'
 import AudioPlayer from '../components/AudioPlayer.vue'
 import VoiceRecorder from '../components/VoiceRecorder.vue'
+import LanguageSwitcher from '../components/LanguageSwitcher.vue'
+
+const { t } = useI18n()
 
 const activeTab = ref('upload')
 const audioFile = ref(null)
@@ -294,7 +301,7 @@ const analyzeAudio = async () => {
 
   isAnalyzing.value = true
   analysisStatus.value = 'analyzing'
-  analysisStatusText.value = 'Аналіз...'
+  analysisStatusText.value = t('analysis.analyzing')
 
   try {
     // Simulate analysis
@@ -308,22 +315,25 @@ const analyzeAudio = async () => {
     })
 
     analysisStatus.value = 'completed'
-    analysisStatusText.value = 'Завершено'
+    analysisStatusText.value = t('analysis.completed')
     isAnalyzing.value = false
 
     alert(
-      'Аналіз звукової доріжки завершено!\n\nІнформація:\n' +
-        `Назва: ${audioFileName.value}\n` +
-        `Розмір: ${formatFileSize(audioFileSize.value)}\n` +
-        `Тип: ${audioFile.value.type}\n` +
-        `Джерело: ${isFromRecording.value ? 'Запис з мікрофону' : 'Завантажений файл'}`,
+      t('analysis.completedAlert') +
+        '\n\n' +
+        t('analysis.info') +
+        '\n' +
+        `${t('analysis.name')}: ${audioFileName.value}\n` +
+        `${t('analysis.size')}: ${formatFileSize(audioFileSize.value)}\n` +
+        `${t('analysis.type')}: ${audioFile.value.type}\n` +
+        `${t('analysis.source')}: ${isFromRecording.value ? t('analysis.fromRecording') : t('analysis.fromUpload')}`,
     )
   } catch (error) {
     console.error('Error analyzing audio:', error)
     analysisStatus.value = 'error'
-    analysisStatusText.value = 'Помилка'
+    analysisStatusText.value = t('analysis.error')
     isAnalyzing.value = false
-    alert('Помилка при аналізі звукової доріжки')
+    alert(t('analysis.errorAlert'))
   }
 }
 

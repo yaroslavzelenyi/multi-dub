@@ -41,9 +41,9 @@
         <!-- Text -->
         <div class="text-center">
           <p class="text-lg font-medium text-gray-200 mb-1">
-            {{ isDragging ? 'Відпустіть файл тут' : 'Перетягніть аудіофайл сюди' }}
+            {{ isDragging ? t('upload.dropHere') : t('upload.dragFile') }}
           </p>
-          <p class="text-sm text-gray-400">або натисніть для вибору файлу</p>
+          <p class="text-sm text-gray-400">{{ t('upload.clickToSelect') }}</p>
         </div>
 
         <!-- Supported formats -->
@@ -68,6 +68,9 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const emit = defineEmits(['file-selected'])
 
@@ -91,13 +94,13 @@ const validateFile = (file) => {
 
   // Check if it's an audio file
   if (!file.type.startsWith('audio/')) {
-    errorMessage.value = 'Будь ласка, завантажте аудіофайл'
+    errorMessage.value = t('upload.errors.notAudio')
     return false
   }
 
   // Check file size
   if (file.size > maxFileSize) {
-    errorMessage.value = 'Файл занадто великий. Максимальний розмір: 100MB'
+    errorMessage.value = t('upload.errors.tooLarge')
     return false
   }
 
