@@ -1,32 +1,5 @@
+/* src/assets/main.css */
+@import './theme.css';
 @import 'tailwindcss';
-
 /* Custom theme colors */
-:root {
-  --color-gray-950: #0d1117;
-}
-
-/* Custom scrollbar styles */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: #0d1117;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #30363d;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #484f58;
-}
-
-/* Custom waveform styles */
-.waveform-container {
-  background: linear-gradient(180deg, rgba(139, 92, 246, 0.05) 0%, rgba(59, 130, 246, 0.05) 100%);
-  border-radius: 8px;
-  overflow: hidden;
-}
+/*

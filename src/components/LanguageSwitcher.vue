@@ -1,8 +1,14 @@
+<!-- src/components/LanguageSwitcher.vue -->
 <template>
   <div class="relative">
     <button
       @click="toggleDropdown"
-      class="flex items-center space-x-2 px-3 py-2 text-sm text-gray-400 hover:text-gray-200 border border-gray-700 hover:border-gray-600 rounded-lg transition-colors"
+      :class="[
+        'flex items-center space-x-2 px-3 py-2 text-sm border rounded-lg transition-colors',
+        themeStore.isDark
+          ? 'text-gray-400 hover:text-gray-200 border-gray-700 hover:border-gray-600'
+          : 'text-gray-700 hover:text-gray-900 border-gray-300 hover:border-gray-400 bg-white',
+      ]"
     >
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
@@ -21,7 +27,10 @@
     <!-- Dropdown -->
     <div
       v-if="isDropdownOpen"
-      class="absolute right-0 mt-2 w-48 bg-gray-900 border border-gray-700 rounded-lg shadow-lg z-50"
+      :class="[
+        'absolute right-0 mt-2 w-48 border rounded-lg shadow-lg z-50 transition-colors',
+        themeStore.isDark ? 'bg-gray-900 border-gray-700' : 'bg-white border-gray-200',
+      ]"
     >
       <div class="py-1">
         <button
@@ -32,7 +41,9 @@
             'w-full text-left px-4 py-2 text-sm transition-colors',
             currentLanguage.code === lang.code
               ? 'bg-violet-600 text-white'
-              : 'text-gray-300 hover:bg-gray-800 hover:text-white',
+              : themeStore.isDark
+                ? 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900',
           ]"
         >
           <div class="flex items-center space-x-3">
@@ -46,10 +57,12 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useThemeStore } from '@/stores/theme'
 
 const { locale } = useI18n()
+const themeStore = useThemeStore()
 
 const isDropdownOpen = ref(false)
 
@@ -79,9 +92,6 @@ const handleClickOutside = (event) => {
     isDropdownOpen.value = false
   }
 }
-
-// Додаємо обробник подій при монтуванні компонента
-import { onMounted, onUnmounted } from 'vue'
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)

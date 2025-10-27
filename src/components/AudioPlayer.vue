@@ -1,18 +1,36 @@
+<!-- src/components/AudioPlayer.vue -->
 <template>
-  <div class="bg-gray-900/50 border border-gray-800 rounded-lg overflow-hidden">
+  <div
+    :class="[
+      'rounded-lg overflow-hidden transition-colors duration-200',
+      themeStore.isDark
+        ? 'bg-gray-800/50 border border-gray-700'
+        : 'bg-white border border-gray-200 shadow-sm',
+    ]"
+  >
     <!-- Waveform Container -->
     <div class="p-6 pb-4">
-      <div ref="waveformRef" class="waveform-container h-32 mb-4"></div>
+      <div ref="waveformRef" class="waveform-container h-32 mb-4 rounded-lg"></div>
 
       <!-- Time Display -->
-      <div class="flex justify-between text-sm text-gray-400 mb-4">
+      <div
+        :class="[
+          'flex justify-between text-sm transition-colors',
+          themeStore.isDark ? 'text-gray-400' : 'text-gray-600',
+        ]"
+      >
         <span>{{ formatTime(currentTime) }}</span>
         <span>{{ formatTime(duration) }}</span>
       </div>
     </div>
 
     <!-- Controls -->
-    <div class="bg-gray-900 border-t border-gray-800 px-6 py-4">
+    <div
+      :class="[
+        'border-t px-6 py-4 transition-colors duration-200',
+        themeStore.isDark ? 'bg-gray-900/50 border-gray-700' : 'bg-gray-50 border-gray-200',
+      ]"
+    >
       <div class="flex items-center justify-between">
         <!-- Left Controls -->
         <div class="flex items-center space-x-3">
@@ -20,7 +38,7 @@
           <button
             @click="togglePlayPause"
             :disabled="!isReady"
-            class="w-12 h-12 flex items-center justify-center bg-violet-600 hover:bg-violet-700 disabled:bg-gray-700 disabled:cursor-not-allowed rounded-full transition-colors"
+            class="w-12 h-12 flex items-center justify-center bg-violet-600 hover:bg-violet-700 disabled:bg-gray-300 disabled:cursor-not-allowed rounded-full transition-colors"
           >
             <svg
               v-if="!isPlaying"
@@ -39,9 +57,21 @@
           <button
             @click="stop"
             :disabled="!isReady"
-            class="w-10 h-10 flex items-center justify-center bg-gray-800 hover:bg-gray-700 disabled:bg-gray-800 disabled:cursor-not-allowed rounded-lg transition-colors"
+            :class="[
+              'w-10 h-10 flex items-center justify-center rounded-lg transition-colors disabled:cursor-not-allowed',
+              themeStore.isDark
+                ? 'bg-gray-800 hover:bg-gray-700 disabled:bg-gray-800'
+                : 'bg-white hover:bg-gray-100 disabled:bg-gray-100 border border-gray-300',
+            ]"
           >
-            <svg class="w-4 h-4 text-gray-300" fill="currentColor" viewBox="0 0 24 24">
+            <svg
+              :class="[
+                'w-4 h-4 transition-colors',
+                themeStore.isDark ? 'text-gray-300' : 'text-gray-600',
+              ]"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path d="M6 6h12v12H6z" />
             </svg>
           </button>
@@ -50,9 +80,19 @@
           <button
             @click="skipBackward"
             :disabled="!isReady"
-            class="w-10 h-10 flex items-center justify-center hover:bg-gray-800 disabled:cursor-not-allowed rounded-lg transition-colors"
+            :class="[
+              'w-10 h-10 flex items-center justify-center rounded-lg transition-colors disabled:cursor-not-allowed',
+              themeStore.isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-200',
+            ]"
           >
-            <svg class="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 24 24">
+            <svg
+              :class="[
+                'w-5 h-5 transition-colors',
+                themeStore.isDark ? 'text-gray-300' : 'text-gray-600',
+              ]"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z" />
             </svg>
           </button>
@@ -61,42 +101,60 @@
           <button
             @click="skipForward"
             :disabled="!isReady"
-            class="w-10 h-10 flex items-center justify-center hover:bg-gray-800 disabled:cursor-not-allowed rounded-lg transition-colors"
+            :class="[
+              'w-10 h-10 flex items-center justify-center rounded-lg transition-colors disabled:cursor-not-allowed',
+              themeStore.isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-200',
+            ]"
           >
-            <svg class="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 24 24">
+            <svg
+              :class="[
+                'w-5 h-5 transition-colors',
+                themeStore.isDark ? 'text-gray-300' : 'text-gray-600',
+              ]"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z" />
             </svg>
           </button>
         </div>
 
-        <!-- Right Controls -->
-        <div class="flex items-center space-x-4">
-          <!-- Playback Speed -->
-          <div class="flex items-center space-x-2">
-            <button
-              v-for="speed in playbackSpeeds"
-              :key="speed"
-              @click="setPlaybackSpeed(speed)"
-              :class="[
-                'px-3 py-1.5 text-xs font-medium rounded-lg transition-colors',
-                playbackSpeed === speed
-                  ? 'bg-violet-600 text-white'
-                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700',
-              ]"
-            >
-              {{ speed }}x
-            </button>
-          </div>
+        <!-- Center Controls - Playback Speed -->
+        <div class="flex items-center space-x-2">
+          <button
+            v-for="speed in playbackSpeeds"
+            :key="speed"
+            @click="setPlaybackSpeed(speed)"
+            :class="[
+              'px-3 py-1.5 text-sm font-medium rounded-lg transition-colors',
+              playbackSpeed === speed
+                ? 'bg-violet-600 text-white'
+                : themeStore.isDark
+                  ? 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+                  : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-300',
+            ]"
+          >
+            {{ speed }}x
+          </button>
+        </div>
 
-          <!-- Volume Control -->
+        <!-- Right Controls - Volume -->
+        <div class="flex items-center space-x-3">
           <div class="flex items-center space-x-2">
+            <!-- Volume Icon -->
             <button
               @click="toggleMute"
-              class="w-9 h-9 flex items-center justify-center hover:bg-gray-800 rounded-lg transition-colors"
+              :class="[
+                'w-10 h-10 flex items-center justify-center rounded-lg transition-colors',
+                themeStore.isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-200',
+              ]"
             >
               <svg
                 v-if="!isMuted && volume > 0.5"
-                class="w-5 h-5 text-gray-300"
+                :class="[
+                  'w-5 h-5 transition-colors',
+                  themeStore.isDark ? 'text-gray-300' : 'text-gray-600',
+                ]"
                 fill="currentColor"
                 viewBox="0 0 24 24"
               >
@@ -106,15 +164,24 @@
               </svg>
               <svg
                 v-else-if="!isMuted && volume > 0"
-                class="w-5 h-5 text-gray-300"
+                :class="[
+                  'w-5 h-5 transition-colors',
+                  themeStore.isDark ? 'text-gray-300' : 'text-gray-600',
+                ]"
                 fill="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path
-                  d="M7 9v6h4l5 5V4l-5 5H7zm11.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"
-                />
+                <path d="M7 9v6h4l5 5V4l-5 5H7z" />
               </svg>
-              <svg v-else class="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 24 24">
+              <svg
+                v-else
+                :class="[
+                  'w-5 h-5 transition-colors',
+                  themeStore.isDark ? 'text-gray-300' : 'text-gray-600',
+                ]"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path
                   d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"
                 />
@@ -127,7 +194,10 @@
               min="0"
               max="1"
               step="0.01"
-              class="w-24 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-violet-600"
+              :class="[
+                'w-24 h-1 rounded-lg appearance-none cursor-pointer accent-violet-600 transition-colors',
+                themeStore.isDark ? 'bg-gray-700' : 'bg-gray-300',
+              ]"
             />
           </div>
         </div>
@@ -136,7 +206,10 @@
       <!-- Loading State -->
       <div
         v-if="isLoading"
-        class="mt-4 flex items-center justify-center space-x-2 text-sm text-gray-400"
+        :class="[
+          'mt-4 flex items-center justify-center space-x-2 text-sm transition-colors',
+          themeStore.isDark ? 'text-gray-400' : 'text-gray-600',
+        ]"
       >
         <svg
           class="animate-spin h-4 w-4"
@@ -167,9 +240,11 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useThemeStore } from '@/stores/theme'
 import WaveSurfer from 'wavesurfer.js'
 
 const { t } = useI18n()
+const themeStore = useThemeStore()
 
 const props = defineProps({
   audioUrl: {
@@ -194,14 +269,32 @@ const isMuted = ref(false)
 const playbackSpeed = ref(1)
 const playbackSpeeds = [0.5, 0.75, 1, 1.25, 1.5, 2]
 
+const getWaveformColors = () => {
+  if (themeStore.isDark) {
+    return {
+      waveColor: '#4b5563',
+      progressColor: '#8b5cf6',
+      cursorColor: '#3b82f6',
+    }
+  } else {
+    return {
+      waveColor: '#d1d5db',
+      progressColor: '#8b5cf6',
+      cursorColor: '#3b82f6',
+    }
+  }
+}
+
 const initWaveSurfer = () => {
   if (!waveformRef.value) return
 
+  const colors = getWaveformColors()
+
   wavesurfer.value = WaveSurfer.create({
     container: waveformRef.value,
-    waveColor: '#6b7280',
-    progressColor: '#8b5cf6',
-    cursorColor: '#3b82f6',
+    waveColor: colors.waveColor,
+    progressColor: colors.progressColor,
+    cursorColor: colors.cursorColor,
     barWidth: 2,
     barRadius: 3,
     cursorWidth: 2,
@@ -246,6 +339,17 @@ const initWaveSurfer = () => {
 
   // Load audio
   wavesurfer.value.load(props.audioUrl)
+}
+
+const updateWaveformColors = () => {
+  if (wavesurfer.value) {
+    const colors = getWaveformColors()
+    wavesurfer.value.setOptions({
+      waveColor: colors.waveColor,
+      progressColor: colors.progressColor,
+      cursorColor: colors.cursorColor,
+    })
+  }
 }
 
 const togglePlayPause = () => {
@@ -308,6 +412,14 @@ const formatTime = (seconds) => {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
+// Watch for theme changes
+watch(
+  () => themeStore.isDark,
+  () => {
+    updateWaveformColors()
+  },
+)
+
 watch(
   () => props.audioUrl,
   () => {
@@ -347,6 +459,10 @@ input[type='range']::-moz-range-thumb {
   background: #8b5cf6;
   cursor: pointer;
   border: none;
+}
+
+.waveform-container {
+  transition: background-color 0.2s ease;
 }
 
 @keyframes spin {
