@@ -910,6 +910,9 @@ const handleNormalize = async () => {
   }
 }
 
+// Виправлена функція applyFade для AudioEditor.vue
+// Замініть існуючу функцію applyFade на цю:
+
 const applyFade = async () => {
   if (!audioEditor.audioBuffer.value) return
 
@@ -919,12 +922,32 @@ const applyFade = async () => {
   try {
     let buffer = audioEditor.audioBuffer.value
 
-    if (fadeInDuration.value > 0) {
-      buffer = audioEditor.applyFadeIn(buffer, fadeInDuration.value)
-    }
+    if (editorStore.hasSelection) {
+      if (fadeInDuration.value > 0) {
+        buffer = audioEditor.applyFadeIn(
+          buffer,
+          fadeInDuration.value,
+          editorStore.selectionStart,
+          editorStore.selectionEnd,
+        )
+      }
 
-    if (fadeOutDuration.value > 0) {
-      buffer = audioEditor.applyFadeOut(buffer, fadeOutDuration.value)
+      if (fadeOutDuration.value > 0) {
+        buffer = audioEditor.applyFadeOut(
+          buffer,
+          fadeOutDuration.value,
+          editorStore.selectionStart,
+          editorStore.selectionEnd,
+        )
+      }
+    } else {
+      if (fadeInDuration.value > 0) {
+        buffer = audioEditor.applyFadeIn(buffer, fadeInDuration.value)
+      }
+
+      if (fadeOutDuration.value > 0) {
+        buffer = audioEditor.applyFadeOut(buffer, fadeOutDuration.value)
+      }
     }
 
     const blob = audioEditor.exportToWav(buffer)
@@ -932,12 +955,21 @@ const applyFade = async () => {
 
     editorStore.saveToHistory(blob)
 
+    if (currentRegion.value) {
+      currentRegion.value.remove()
+      currentRegion.value = null
+    }
+    regionsPlugin.value.clearRegions()
+
     isLoading.value = true
+    isReady.value = false
+
     await wavesurfer.value.load(url)
 
     const file = new File([blob], 'faded.wav', { type: 'audio/wav' })
     await audioEditor.loadAudioFile(file)
 
+    editorStore.clearSelection()
     emit('audio-updated', blob)
   } catch (error) {
     console.error('Fade error:', error)

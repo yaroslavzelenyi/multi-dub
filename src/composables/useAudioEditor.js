@@ -123,28 +123,41 @@ export const useAudioEditor = () => {
     return mergedBuffer
   }
 
-  const applyFadeIn = (buffer, duration) => {
+  const applyFadeIn = (buffer, duration, startTime = 0, endTime = null) => {
     const sampleRate = buffer.sampleRate
     const fadeSamples = Math.floor(duration * sampleRate)
 
+    const startSample = Math.floor(startTime * sampleRate)
+    const actualEndTime = endTime !== null ? endTime : buffer.duration
+    const endSample = Math.min(Math.floor(actualEndTime * sampleRate), buffer.length)
+
+    const fadeEndSample = Math.min(startSample + fadeSamples, endSample)
+
     for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
       const data = buffer.getChannelData(channel)
-      for (let i = 0; i < fadeSamples && i < data.length; i++) {
-        data[i] *= i / fadeSamples
+      for (let i = startSample; i < fadeEndSample; i++) {
+        const fadePosition = i - startSample
+        data[i] *= fadePosition / fadeSamples
       }
     }
     return buffer
   }
 
-  const applyFadeOut = (buffer, duration) => {
+  const applyFadeOut = (buffer, duration, startTime = 0, endTime = null) => {
     const sampleRate = buffer.sampleRate
     const fadeSamples = Math.floor(duration * sampleRate)
-    const startSample = Math.max(0, buffer.length - fadeSamples)
+
+    const startSample = Math.floor(startTime * sampleRate)
+    const actualEndTime = endTime !== null ? endTime : buffer.duration
+    const endSample = Math.min(Math.floor(actualEndTime * sampleRate), buffer.length)
+
+    const fadeStartSample = Math.max(endSample - fadeSamples, startSample)
 
     for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
       const data = buffer.getChannelData(channel)
-      for (let i = 0; i < fadeSamples && startSample + i < data.length; i++) {
-        data[startSample + i] *= 1 - i / fadeSamples
+      for (let i = fadeStartSample; i < endSample; i++) {
+        const fadePosition = i - fadeStartSample
+        data[i] *= 1 - fadePosition / fadeSamples
       }
     }
     return buffer
@@ -250,6 +263,7 @@ export const useAudioEditor = () => {
       try {
         sourceNode.value.stop()
       } catch (e) {
+        console.error('Error stopping audio:', e)
       }
       sourceNode.value = null
     }
