@@ -1,11 +1,9 @@
-/** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{vue,js,ts,jsx,tsx}'],
-  darkMode: 'class', // Критично важливо для системи тем
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
-        // Додаємо theme кольори для світлої та темної теми
         theme: {
           primary: 'var(--color-bg-primary)',
           secondary: 'var(--color-bg-secondary)',

@@ -13,9 +13,7 @@
       </div>
     </div>
 
-    <!-- Recording Controls -->
     <div class="flex flex-col items-center space-y-4">
-      <!-- Visualizer -->
       <div
         v-if="isRecording"
         class="w-full h-24 bg-gray-950 rounded-lg overflow-hidden flex items-center justify-center"
@@ -23,14 +21,11 @@
         <canvas ref="visualizerCanvas" class="w-full h-full"></canvas>
       </div>
 
-      <!-- Waveform Preview -->
       <div v-if="audioBlob && !isRecording" class="w-full">
         <div ref="recordedWaveformRef" class="waveform-container h-24"></div>
       </div>
 
-      <!-- Control Buttons -->
       <div class="flex items-center space-x-3">
-        <!-- Start Recording Button -->
         <button
           v-if="!isRecording && !audioBlob"
           @click="startRecording"
@@ -47,7 +42,6 @@
           </svg>
         </button>
 
-        <!-- Stop Recording Button -->
         <button
           v-if="isRecording"
           @click="stopRecording"
@@ -58,7 +52,6 @@
           </svg>
         </button>
 
-        <!-- Play Recorded Audio -->
         <button
           v-if="audioBlob && !isRecording"
           @click="togglePlayback"
@@ -77,7 +70,6 @@
           </svg>
         </button>
 
-        <!-- Delete Recording -->
         <button
           v-if="audioBlob && !isRecording"
           @click="deleteRecording"
@@ -93,7 +85,6 @@
           </svg>
         </button>
 
-        <!-- Use Recording -->
         <button
           v-if="audioBlob && !isRecording"
           @click="useRecording"
@@ -111,7 +102,6 @@
         </button>
       </div>
 
-      <!-- Error/Info Messages -->
       <div v-if="!isSupported" class="text-sm text-red-400 text-center">
         {{ t('recorder.browserNotSupported') }}
       </div>

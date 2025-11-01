@@ -1,4 +1,3 @@
-<!-- src/components/AudioPlayer.vue -->
 <template>
   <div
     :class="[
@@ -8,11 +7,9 @@
         : 'bg-white border border-gray-200 shadow-sm',
     ]"
   >
-    <!-- Waveform Container -->
     <div class="p-6 pb-4">
       <div ref="waveformRef" class="waveform-container h-32 mb-4 rounded-lg"></div>
 
-      <!-- Time Display -->
       <div
         :class="[
           'flex justify-between text-sm transition-colors',
@@ -24,7 +21,6 @@
       </div>
     </div>
 
-    <!-- Controls -->
     <div
       :class="[
         'border-t px-6 py-4 transition-colors duration-200',
@@ -32,9 +28,7 @@
       ]"
     >
       <div class="flex items-center justify-between">
-        <!-- Left Controls -->
         <div class="flex items-center space-x-3">
-          <!-- Play/Pause Button -->
           <button
             @click="togglePlayPause"
             :disabled="!isReady"
@@ -53,7 +47,6 @@
             </svg>
           </button>
 
-          <!-- Stop Button -->
           <button
             @click="stop"
             :disabled="!isReady"
@@ -76,7 +69,6 @@
             </svg>
           </button>
 
-          <!-- Skip Backward -->
           <button
             @click="skipBackward"
             :disabled="!isReady"
@@ -97,7 +89,6 @@
             </svg>
           </button>
 
-          <!-- Skip Forward -->
           <button
             @click="skipForward"
             :disabled="!isReady"
@@ -119,7 +110,6 @@
           </button>
         </div>
 
-        <!-- Center Controls - Playback Speed -->
         <div class="flex items-center space-x-2">
           <button
             v-for="speed in playbackSpeeds"
@@ -138,10 +128,8 @@
           </button>
         </div>
 
-        <!-- Right Controls - Volume -->
         <div class="flex items-center space-x-3">
           <div class="flex items-center space-x-2">
-            <!-- Volume Icon -->
             <button
               @click="toggleMute"
               :class="[
@@ -203,7 +191,6 @@
         </div>
       </div>
 
-      <!-- Loading State -->
       <div
         v-if="isLoading"
         :class="[
@@ -304,7 +291,6 @@ const initWaveSurfer = () => {
     backend: 'WebAudio',
   })
 
-  // Event listeners
   wavesurfer.value.on('ready', () => {
     isLoading.value = false
     isReady.value = true
@@ -337,7 +323,6 @@ const initWaveSurfer = () => {
     isLoading.value = false
   })
 
-  // Load audio
   wavesurfer.value.load(props.audioUrl)
 }
 
@@ -412,7 +397,6 @@ const formatTime = (seconds) => {
   return `${mins}:${secs.toString().padStart(2, '0')}`
 }
 
-// Watch for theme changes
 watch(
   () => themeStore.isDark,
   () => {

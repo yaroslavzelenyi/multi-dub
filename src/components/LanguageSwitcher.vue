@@ -1,4 +1,3 @@
-<!-- src/components/LanguageSwitcher.vue -->
 <template>
   <div class="relative">
     <button
@@ -24,7 +23,6 @@
       </svg>
     </button>
 
-    <!-- Dropdown -->
     <div
       v-if="isDropdownOpen"
       :class="[
@@ -82,11 +80,9 @@ const toggleDropdown = () => {
 const changeLanguage = (langCode) => {
   locale.value = langCode
   isDropdownOpen.value = false
-  // Зберігаємо вибрану мову в localStorage
   localStorage.setItem('preferred-language', langCode)
 }
 
-// Закриваємо dropdown при кліку поза ним
 const handleClickOutside = (event) => {
   if (!event.target.closest('.relative')) {
     isDropdownOpen.value = false
@@ -95,7 +91,6 @@ const handleClickOutside = (event) => {
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
-  // Відновлюємо збережену мову
   const savedLanguage = localStorage.getItem('preferred-language')
   if (savedLanguage && languages.some((lang) => lang.code === savedLanguage)) {
     locale.value = savedLanguage

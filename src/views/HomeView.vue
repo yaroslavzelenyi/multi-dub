@@ -1,10 +1,8 @@
-<!-- src/views/HomeView.vue -->
 <template>
   <div
     class="min-h-screen transition-colors duration-200"
     :class="[themeStore.isDark ? 'bg-gray-950' : 'bg-gray-50']"
   >
-    <!-- Header -->
     <header
       class="border-b backdrop-blur-sm sticky top-0 z-10 transition-colors duration-200"
       :class="[
@@ -48,9 +46,7 @@
       </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <!-- Upload/Record Selection -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       <div v-if="!audioFile" class="flex flex-col items-center justify-center min-h-[60vh]">
         <div class="text-center mb-8">
           <h2
@@ -67,7 +63,6 @@
           </p>
         </div>
 
-        <!-- Tab Selection -->
         <div
           class="flex space-x-2 mb-8 rounded-lg p-1 transition-colors duration-200"
           :class="[themeStore.isDark ? 'bg-gray-900' : 'bg-gray-200']"
@@ -100,24 +95,72 @@
           </button>
         </div>
 
-        <!-- Content based on active tab -->
         <div class="w-full max-w-2xl">
-          <FileUpload v-if="activeTab === 'upload'" @fileSelected="handleFileSelected" />
-          <VoiceRecorder v-else @recordingComplete="handleRecordingComplete" />
+          <FileUpload v-if="activeTab === 'upload'" @file-selected="handleFileSelected" />
+          <VoiceRecorder v-else @recording-complete="handleRecordingComplete" />
         </div>
       </div>
 
-      <!-- Audio Player and Settings -->
       <div v-else class="space-y-6">
-        <!-- Audio Player -->
-        <AudioPlayer
+        <div
+          class="flex items-center justify-between p-4 rounded-lg"
+          :class="[themeStore.isDark ? 'bg-gray-800' : 'bg-white border border-gray-200']"
+        >
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 bg-violet-600/20 rounded-lg flex items-center justify-center">
+              <svg
+                class="w-5 h-5 text-violet-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
+                />
+              </svg>
+            </div>
+            <div>
+              <h3 :class="['font-medium', themeStore.isDark ? 'text-gray-100' : 'text-gray-900']">
+                {{ audioFileName }}
+              </h3>
+              <p :class="['text-sm', themeStore.isDark ? 'text-gray-400' : 'text-gray-600']">
+                {{ formatFileSize(audioFileSize) }}
+                <span v-if="isFromRecording" class="ml-2">
+                  • {{ $t('analysis.fromRecording') }}
+                </span>
+              </p>
+            </div>
+          </div>
+          <button
+            @click="clearAudio"
+            :class="[
+              'p-2 rounded-lg transition-colors',
+              themeStore.isDark
+                ? 'hover:bg-gray-700 text-gray-400 hover:text-gray-200'
+                : 'hover:bg-gray-100 text-gray-600 hover:text-gray-900',
+            ]"
+            :title="$t('player.changeFile')"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+
+        <AudioEditor
           :audioUrl="audioUrl"
-          :fileName="audioFileName"
-          :isFromRecording="isFromRecording"
-          @clearAudio="clearAudio"
+          :audioFile="audioFile"
+          @audio-updated="handleAudioUpdated"
         />
 
-        <!-- Settings Panel -->
         <div
           class="rounded-lg p-6 transition-colors duration-200"
           :class="[themeStore.isDark ? 'bg-gray-800' : 'bg-white border border-gray-200']"
@@ -129,7 +172,6 @@
             {{ $t('settings.title') }}
           </h3>
 
-          <!-- Analysis Section -->
           <div
             class="mb-6 p-4 rounded-lg transition-colors duration-200"
             :class="[themeStore.isDark ? 'bg-gray-950' : 'bg-gray-50']"
@@ -208,6 +250,15 @@
                     </span>
                     <span class="text-violet-400">{{ audioFileName }}</span>
                   </div>
+                  <div v-if="isFromRecording">
+                    <span
+                      class="transition-colors duration-200"
+                      :class="[themeStore.isDark ? 'text-gray-500' : 'text-gray-500']"
+                    >
+                      {{ $t('analysis.source') }}:
+                    </span>
+                    <span class="text-violet-400">{{ $t('analysis.fromRecording') }}</span>
+                  </div>
                 </div>
               </div>
 
@@ -252,7 +303,6 @@
             </div>
           </div>
 
-          <!-- Other Actions -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <button
               class="px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-lg transition-colors"
@@ -274,7 +324,6 @@
       </div>
     </main>
 
-    <!-- Footer -->
     <footer
       class="border-t mt-20 transition-colors duration-200"
       :class="[themeStore.isDark ? 'border-gray-800' : 'border-gray-200']"
@@ -296,7 +345,7 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useThemeStore } from '@/stores/theme'
 import FileUpload from '../components/FileUpload.vue'
-import AudioPlayer from '../components/AudioPlayer.vue'
+import AudioEditor from '../components/AudioEditor.vue'
 import VoiceRecorder from '../components/VoiceRecorder.vue'
 import LanguageSwitcher from '../components/LanguageSwitcher.vue'
 import ThemeToggle from '../components/ThemeToggle.vue'
@@ -312,7 +361,6 @@ const audioFileSize = ref(0)
 const isFromRecording = ref(false)
 const audioBlob = ref(null)
 
-// Analysis status
 const analysisStatus = ref(null)
 const isAnalyzing = ref(false)
 const analysisStatusText = ref('')
@@ -333,6 +381,25 @@ const handleRecordingComplete = (file, blob) => {
   audioFileSize.value = file.size
   audioUrl.value = URL.createObjectURL(file)
   isFromRecording.value = true
+  audioBlob.value = blob
+  analysisStatus.value = null
+}
+
+const handleAudioUpdated = (blob) => {
+  if (audioUrl.value) {
+    URL.revokeObjectURL(audioUrl.value)
+  }
+
+  const timestamp = Date.now()
+  const originalName = audioFileName.value.replace(/\.[^/.]+$/, '')
+  const file = new File([blob], `${originalName}-edited-${timestamp}.wav`, {
+    type: 'audio/wav',
+  })
+
+  audioFile.value = file
+  audioFileName.value = file.name
+  audioFileSize.value = file.size
+  audioUrl.value = URL.createObjectURL(file)
   audioBlob.value = blob
   analysisStatus.value = null
 }

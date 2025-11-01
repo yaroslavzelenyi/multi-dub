@@ -1,4 +1,3 @@
-// src/main.js
 import './assets/main.css'
 
 import { createApp } from 'vue'
@@ -25,9 +24,7 @@ app.use(pinia)
 app.use(router)
 app.use(i18n)
 
-// Ініціалізація теми після створення Pinia
 const themeStore = useThemeStore()
 themeStore.initializeTheme()
-themeStore.setupSystemThemeListener()
 
 app.mount('#app')

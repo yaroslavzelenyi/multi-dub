@@ -7,10 +7,8 @@ export const install = async (context) => {
   let abortController = new AbortController()
 
   const httpClient = axios.create({
-    /* Base config */
     baseURL: import.meta.env.VITE_API_URL,
 
-    /* Custom config */
     abortable: true,
   })
 

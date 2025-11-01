@@ -1,4 +1,3 @@
-<!-- src/components/FileUpload.vue -->
 <template>
   <div class="w-full max-w-2xl">
     <div
@@ -24,7 +23,6 @@
       />
 
       <div class="flex flex-col items-center space-y-4">
-        <!-- Icon -->
         <div
           :class="[
             'w-16 h-16 rounded-full flex items-center justify-center transition-colors',
@@ -49,7 +47,6 @@
           </svg>
         </div>
 
-        <!-- Text -->
         <div class="text-center">
           <p
             :class="[
@@ -69,7 +66,6 @@
           </p>
         </div>
 
-        <!-- Supported formats -->
         <div class="flex flex-wrap justify-center gap-2">
           <span
             v-for="format in supportedFormats"
@@ -84,7 +80,6 @@
         </div>
       </div>
 
-      <!-- Error message -->
       <div
         v-if="errorMessage"
         :class="[
@@ -115,7 +110,7 @@ const isDragging = ref(false)
 const errorMessage = ref('')
 
 const supportedFormats = ['MP3', 'WAV', 'M4A', 'OGG']
-const maxFileSize = 100 * 1024 * 1024 // 100MB
+const maxFileSize = 100 * 1024 * 1024
 
 const triggerFileInput = () => {
   fileInputRef.value?.click()
@@ -128,13 +123,11 @@ const validateFile = (file) => {
     return false
   }
 
-  // Check if it's an audio file
   if (!file.type.startsWith('audio/')) {
     errorMessage.value = t('upload.errors.notAudio')
     return false
   }
 
-  // Check file size
   if (file.size > maxFileSize) {
     errorMessage.value = t('upload.errors.tooLarge')
     return false
