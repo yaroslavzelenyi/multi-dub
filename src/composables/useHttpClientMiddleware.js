@@ -1,16 +1,18 @@
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from '../stores/authStore'
-import { useNotification } from './useNotification'
-import { Base64Encode } from '../utils/crypto'
-import { useHttpClient } from './useHTTPClient'
+// import { useAuthStore } from '../stores/auth'
+// import { useNotification } from './useNotification'
+// import { Base64Encode } from '../utils/crypto'
+import apiClient from '../api/handlers/client'
+
+export const useHttpClient = () => apiClient
 
 export const useHttpClientMiddleware = () => {
   const httpClient = useHttpClient()
-  const authStore = useAuthStore()
+  // const authStore = useAuthStore()
   const router = useRouter()
   const route = useRoute()
-  const { error: showError } = useNotification()
+  // const { error: showError } = useNotification()
   const { locale } = useI18n()
 
   function requestMiddleware() {
@@ -18,9 +20,9 @@ export const useHttpClientMiddleware = () => {
       (config) => {
         config.headers['X-Site-Language'] = locale.value
 
-        if (authStore.token) {
-          config.headers.Authorization = `Bearer ${authStore.token}`
-        }
+        // if (authStore.token) {
+        //   config.headers.Authorization = `Bearer ${authStore.token}`
+        // }
 
         return config
       },
@@ -39,18 +41,18 @@ export const useHttpClientMiddleware = () => {
         const authRequired = !['login'].includes(route.name)
 
         if (error?.message && authRequired) {
-          showError(error.message)
+          // showError(error.message)
         }
 
         if (error.response?.status === 401 && authRequired) {
           console.log('401 Unauthorized - clearing token and redirecting to login')
 
-          authStore.logout()
+          // authStore.logout()
 
           const query = {}
 
           if (route.name !== 'not-found' && router.resolve(route.fullPath)?.name !== 'not-found') {
-            query.redirect = Base64Encode({
+            query.redirect = btoa({
               name: route.name,
               params: route.params,
               query: route.query,

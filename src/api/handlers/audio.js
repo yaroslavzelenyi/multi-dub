@@ -1,4 +1,4 @@
-export default (httpClient) => ({
+const audioApi = (httpClient) => ({
   async uploadAudio(file) {
     const formData = new FormData()
     formData.append('audio', file)
@@ -43,3 +43,6 @@ export default (httpClient) => ({
     return data
   },
 })
+
+export default audioApi
+export { audioApi }

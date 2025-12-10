@@ -1,4 +1,4 @@
-import { useHttpClient } from './useHTTPClient'
+import { useHttpClient } from './useHttpClientMiddleware'
 
 function kebabToCamel(filename) {
   return filename.replace(/-([a-z])/g, (match, letter) => letter.toUpperCase())
@@ -26,9 +26,14 @@ export const useApi = () => {
     }
 
     const [, filename] = match
+    if (filename === 'index') {
+      continue
+    }
+
     const name = kebabToCamel(filename)
 
-    API[name] = handlers[key](httpClient)
+    const handler = handlers[key]
+    API[name] = typeof handler === 'function' ? handler(httpClient) : handler
   }
 
   return {
