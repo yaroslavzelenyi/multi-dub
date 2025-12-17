@@ -424,6 +424,12 @@ onBeforeUnmount(() => {
     wavesurfer.value.destroy()
   }
 })
+
+// Експонуємо метод stop для використання через ref
+defineExpose({
+  stop,
+  wavesurfer,
+})
 </script>
 
 <style scoped>

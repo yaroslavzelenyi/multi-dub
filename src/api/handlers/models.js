@@ -3,10 +3,10 @@ import apiClient from './client'
 export const modelsApi = {
   /**
    * Отримати всі налаштування моделей
-   * GET /models/all
+   * GET /models
    */
   async getAll() {
-    const response = await apiClient.get('/models/all')
+    const response = await apiClient.get('/models')
     return response.data
   },
 

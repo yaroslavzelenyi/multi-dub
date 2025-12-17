@@ -4,6 +4,7 @@ import subtitlesApiOriginal from './subtitles'
 import diarizationApi from './diarization'
 import mappingsApi from './mappings'
 import modelsApi from './models'
+import voicingApi from './voicing'
 import apiClient from './client'
 
 // Ініціалізуємо API, які є функціями
@@ -20,6 +21,7 @@ export {
   diarizationApi,
   mappingsApi,
   modelsApi,
+  voicingApi,
   apiClient,
 }
 
@@ -31,5 +33,6 @@ export default {
   diarizationApi,
   mappingsApi,
   modelsApi,
+  voicingApi,
   apiClient,
 }

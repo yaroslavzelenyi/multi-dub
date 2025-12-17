@@ -188,9 +188,67 @@ export const useAudioEditor = () => {
     return buffer
   }
 
-  const exportToWav = (buffer) => {
-    const numberOfChannels = buffer.numberOfChannels
-    const sampleRate = buffer.sampleRate
+  const resampleBuffer = (buffer, targetSampleRate) => {
+    if (buffer.sampleRate === targetSampleRate) {
+      return buffer
+    }
+
+    const context = initAudioContext()
+    const ratio = targetSampleRate / buffer.sampleRate
+    const newLength = Math.round(buffer.length * ratio)
+    const result = context.createBuffer(buffer.numberOfChannels, newLength, targetSampleRate)
+
+    for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+      const inputData = buffer.getChannelData(channel)
+      const outputData = result.getChannelData(channel)
+
+      for (let i = 0; i < newLength; i++) {
+        const position = i / ratio
+        const index = Math.floor(position)
+        const fraction = position - index
+
+        if (index + 1 < inputData.length) {
+          outputData[i] = inputData[index] * (1 - fraction) + inputData[index + 1] * fraction
+        } else {
+          outputData[i] = inputData[index]
+        }
+      }
+    }
+
+    return result
+  }
+
+  const exportToWav = (buffer, options = {}) => {
+    // Опції для оптимізації розміру
+    const targetSampleRate = options.sampleRate || Math.min(buffer.sampleRate, 44100)
+    const convertToMono = options.mono || false
+
+    // Ресемплюємо якщо потрібно
+    let processedBuffer = buffer
+    if (targetSampleRate !== buffer.sampleRate) {
+      processedBuffer = resampleBuffer(buffer, targetSampleRate)
+    }
+
+    // Конвертуємо в моно якщо потрібно
+    let numberOfChannels = processedBuffer.numberOfChannels
+    if (convertToMono && numberOfChannels > 1) {
+      const context = initAudioContext()
+      const monoBuffer = context.createBuffer(1, processedBuffer.length, targetSampleRate)
+      const monoData = monoBuffer.getChannelData(0)
+
+      for (let i = 0; i < processedBuffer.length; i++) {
+        let sum = 0
+        for (let channel = 0; channel < numberOfChannels; channel++) {
+          sum += processedBuffer.getChannelData(channel)[i]
+        }
+        monoData[i] = sum / numberOfChannels
+      }
+
+      processedBuffer = monoBuffer
+      numberOfChannels = 1
+    }
+
+    const sampleRate = processedBuffer.sampleRate
     const format = 1
     const bitDepth = 16
 
@@ -198,9 +256,9 @@ export const useAudioEditor = () => {
     const blockAlign = numberOfChannels * bytesPerSample
 
     const data = []
-    for (let i = 0; i < buffer.length; i++) {
+    for (let i = 0; i < processedBuffer.length; i++) {
       for (let channel = 0; channel < numberOfChannels; channel++) {
-        const sample = buffer.getChannelData(channel)[i]
+        const sample = processedBuffer.getChannelData(channel)[i]
         const int16 = Math.max(-1, Math.min(1, sample))
         data.push(int16 < 0 ? int16 * 0x8000 : int16 * 0x7fff)
       }
@@ -290,6 +348,7 @@ export const useAudioEditor = () => {
     applyFadeOut,
     normalizeAudio,
     exportToWav,
+    resampleBuffer,
     playAudio,
     stopAudio,
     cleanup,

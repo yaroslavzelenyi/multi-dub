@@ -1,0 +1,168 @@
+<template>
+  <div class="step-export">
+    <h2 class="text-2xl font-bold mb-6">{{ $t('workflow.steps.export.title') }}</h2>
+    <p class="mb-8" :class="[themeStore.isDark ? 'text-gray-400' : 'text-gray-600']">
+      {{ $t('workflow.steps.export.description') }}
+    </p>
+
+    <!-- Audio Files Selection -->
+    <div class="mb-8">
+      <h3 class="text-lg font-semibold mb-4">{{ $t('workflow.steps.export.selectFiles') }}</h3>
+      <div class="space-y-3">
+        <div
+          v-for="audio in audioFiles"
+          :key="audio.id"
+          class="p-4 rounded-lg border"
+          :class="[themeStore.isDark ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50']"
+        >
+          <div class="flex justify-between items-center mb-4">
+            <div>
+              <h4 class="font-medium">{{ audio.name }}</h4>
+              <p class="text-sm" :class="[themeStore.isDark ? 'text-gray-400' : 'text-gray-600']">
+                {{ formatFileSize(audio.size) }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Export Buttons -->
+          <div class="flex gap-2">
+            <button
+              @click="exportSubtitles(audio.id, 'srt')"
+              class="flex-1 px-4 py-2 rounded-lg font-medium transition-colors"
+              :class="[
+                themeStore.isDark
+                  ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                  : 'bg-gray-200 hover:bg-gray-300 text-gray-900',
+              ]"
+            >
+              {{ $t('workflow.steps.export.subtitles') }} (SRT)
+            </button>
+            <button
+              @click="exportAudio(audio.id)"
+              :disabled="processing[audio.id]"
+              class="flex-1 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <span v-if="processing[audio.id]">{{ $t('workflow.steps.export.processing') }}...</span>
+              <span v-else>{{ $t('workflow.steps.export.audio') }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Complete Step Button -->
+    <button
+      @click="completeStep"
+      class="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+    >
+      {{ $t('workflow.steps.export.complete') }}
+    </button>
+
+    <!-- Success Message -->
+    <div
+      v-if="exportedFiles.length > 0"
+      class="mt-6 p-4 rounded-lg bg-green-600/10 border border-green-600"
+    >
+      <div class="flex items-start gap-3">
+        <svg class="w-6 h-6 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+        <div class="flex-1">
+          <h4 class="font-semibold text-green-600 mb-1">
+            {{ $t('workflow.steps.export.success') }}
+          </h4>
+          <ul class="text-sm text-green-600 space-y-1">
+            <li v-for="(file, index) in exportedFiles" :key="index">{{ file }}</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, reactive, onMounted } from 'vue'
+import { useThemeStore } from '@/stores/theme'
+import { useWorkflowStore } from '@/stores/workflow'
+import { subtitlesApi } from '@/api/handlers'
+
+const themeStore = useThemeStore()
+const workflowStore = useWorkflowStore()
+
+const audioFiles = ref([])
+const processing = reactive({})
+const exportedFiles = ref([])
+
+onMounted(() => {
+  const uploadData = workflowStore.getStepData('upload')
+  if (uploadData?.audioFiles) {
+    audioFiles.value = uploadData.audioFiles
+  }
+})
+
+async function exportSubtitles(audioId, format) {
+  try {
+    const subtitles = await subtitlesApi.getForAudio(audioId)
+    const audio = audioFiles.value.find((a) => a.id === audioId)
+
+    // Генеруємо SRT файл
+    let srtContent = ''
+    subtitles.forEach((sub, index) => {
+      srtContent += `${index + 1}\n`
+      srtContent += `${formatSrtTime(sub.startTime)} --> ${formatSrtTime(sub.endTime)}\n`
+      srtContent += `${sub.text}\n\n`
+    })
+
+    // Завантажуємо файл
+    const blob = new Blob([srtContent], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${audio.name}.${sub.language}.srt`
+    a.click()
+    URL.revokeObjectURL(url)
+
+    exportedFiles.value.push(`${audio.name}.srt`)
+  } catch (error) {
+    console.error('Error exporting subtitles:', error)
+  }
+}
+
+async function exportAudio(audioId) {
+  processing[audioId] = true
+  try {
+    // TODO: Імплементувати експорт аудіо через API
+    const audio = audioFiles.value.find((a) => a.id === audioId)
+    exportedFiles.value.push(`${audio.name}.mp3`)
+  } catch (error) {
+    console.error('Error exporting audio:', error)
+  } finally {
+    processing[audioId] = false
+  }
+}
+
+function completeStep() {
+  workflowStore.completeStep('export', { exportedFiles: exportedFiles.value })
+}
+
+function formatFileSize(bytes) {
+  if (!bytes) return '0 B'
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB'
+  return (bytes / (1024 * 1024)).toFixed(2) + ' MB'
+}
+
+function formatSrtTime(seconds) {
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const secs = Math.floor(seconds % 60)
+  const ms = Math.floor((seconds % 1) * 1000)
+
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`
+}
+</script>

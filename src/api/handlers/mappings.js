@@ -3,29 +3,20 @@ import apiClient from './client'
 export const mappingsApi = {
   /**
    * Отримати всі маппінги проекту
-   * GET /mappings/all
+   * GET /mappings
    */
   async getAll() {
-    const response = await apiClient.get('/mappings/all')
+    const response = await apiClient.get('/mappings')
     return response.data
   },
 
   /**
    * Отримати маппінги для конкретного аудіофайлу
-   * GET /mappings/all/file/:id
+   * GET /mappings/:id (де id - це ID аудіофайлу)
    * @param {number} audioId - ID аудіофайлу
    */
   async getAllForFile(audioId) {
-    const response = await apiClient.get(`/mappings/all/file/${audioId}`)
-    return response.data
-  },
-
-  /**
-   * Отримати один маппінг
-   * GET /mappings/:id
-   */
-  async getOne(id) {
-    const response = await apiClient.get(`/mappings/${id}`)
+    const response = await apiClient.get(`/mappings/${audioId}`)
     return response.data
   },
 
@@ -66,31 +57,50 @@ export const mappingsApi = {
 
   /**
    * Відокремити аудіо (audio separation)
-   * POST /audio/separate/:id
-   * @param {number} audioId - ID аудіофайлу для сепарації
+   * POST /audio/:id/separation
+   * @param {number} audioId - ID аудіофайлу для сепарації (тільки для type='raw')
    */
   async separateAudio(audioId) {
-    const response = await apiClient.post(`/audio/separate/${audioId}`)
+    const response = await apiClient.post(`/audio/${audioId}/separation`)
     return response.data
   },
 
   /**
    * Конвертувати голос (voice conversion)
-   * POST /audio/convert/:id
-   * @param {number} audioId - ID аудіофайлу для конвертації
+   * POST /audio/:id/conversion
+   * @param {number} audioId - ID аудіофайлу для конвертації (тільки для type='dubbed')
    */
   async convertAudio(audioId) {
-    const response = await apiClient.post(`/audio/convert/${audioId}`)
+    const response = await apiClient.post(`/audio/${audioId}/conversion`)
+    return response.data
+  },
+
+  /**
+   * Отримати всі вихідні аудіофайли
+   * GET /audio/output
+   */
+  async getOutputs() {
+    const response = await apiClient.get('/audio/output')
+    return response.data
+  },
+
+  /**
+   * Отримати вихідні файли для конкретного аудіо
+   * GET /audio/:id/output
+   * @param {number} audioId - ID аудіофайлу (тільки для type='raw')
+   */
+  async getOutputsForAudio(audioId) {
+    const response = await apiClient.get(`/audio/${audioId}/output`)
     return response.data
   },
 
   /**
    * Створити фінальний вихідний файл
-   * POST /audio/produce/:id
-   * @param {number} audioId - ID аудіофайлу
+   * POST /audio/:id/produce
+   * @param {number} audioId - ID аудіофайлу (тільки для type='raw')
    */
   async produceOutput(audioId) {
-    const response = await apiClient.post(`/audio/produce/${audioId}`)
+    const response = await apiClient.post(`/audio/${audioId}/produce`)
     return response.data
   },
 }
