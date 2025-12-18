@@ -10,14 +10,72 @@
     <div class="p-6 pb-4">
       <div ref="waveformRef" class="waveform-container h-32 mb-4 rounded-lg relative"></div>
 
-      <div
-        :class="[
-          'flex justify-between text-sm transition-colors',
-          themeStore.isDark ? 'text-gray-400' : 'text-gray-600',
-        ]"
-      >
-        <span>{{ formatTime(currentTime) }}</span>
-        <span>{{ formatTime(duration) }}</span>
+      <div class="flex justify-between items-center mb-2">
+        <div
+          :class="[
+            'flex text-sm transition-colors',
+            themeStore.isDark ? 'text-gray-400' : 'text-gray-600',
+          ]"
+        >
+          <span>{{ formatTime(currentTime) }}</span>
+        </div>
+
+        <div class="flex items-center gap-1">
+          <button
+            @click="zoomOut"
+            :disabled="!isReady || zoomLevel <= minZoom"
+            :class="[
+              'w-8 h-8 flex items-center justify-center rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+              themeStore.isDark
+                ? 'hover:bg-gray-700 text-gray-400'
+                : 'hover:bg-gray-200 text-gray-600',
+            ]"
+            title="Зменшити масштаб"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+            </svg>
+          </button>
+
+          <button
+            @click="resetZoom"
+            :disabled="!isReady"
+            :class="[
+              'px-2 h-8 flex items-center justify-center rounded-lg transition-colors text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50',
+              themeStore.isDark
+                ? 'hover:bg-gray-700 text-gray-400'
+                : 'hover:bg-gray-200 text-gray-600',
+            ]"
+            title="Скинути масштаб"
+          >
+            100%
+          </button>
+
+          <button
+            @click="zoomIn"
+            :disabled="!isReady || zoomLevel >= maxZoom"
+            :class="[
+              'w-8 h-8 flex items-center justify-center rounded-lg transition-colors disabled:cursor-not-allowed disabled:opacity-50',
+              themeStore.isDark
+                ? 'hover:bg-gray-700 text-gray-400'
+                : 'hover:bg-gray-200 text-gray-600',
+            ]"
+            title="Збільшити масштаб"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
+            </svg>
+          </button>
+        </div>
+
+        <div
+          :class="[
+            'flex text-sm transition-colors',
+            themeStore.isDark ? 'text-gray-400' : 'text-gray-600',
+          ]"
+        >
+          <span>{{ formatTime(duration) }}</span>
+        </div>
       </div>
     </div>
 
@@ -265,6 +323,9 @@ const volume = ref(0.7)
 const isMuted = ref(false)
 const playbackSpeed = ref(1)
 const playbackSpeeds = [0.5, 0.75, 1, 1.25, 1.5, 2]
+const zoomLevel = ref(50) // pixels per second
+const minZoom = 10
+const maxZoom = 500
 
 const getWaveformColors = () => {
   if (themeStore.isDark) {
@@ -453,11 +514,38 @@ const setPlaybackSpeed = (speed) => {
   }
 }
 
+const zoomIn = () => {
+  if (wavesurfer.value && zoomLevel.value < maxZoom) {
+    zoomLevel.value = Math.min(zoomLevel.value + 25, maxZoom)
+    wavesurfer.value.zoom(zoomLevel.value)
+  }
+}
+
+const zoomOut = () => {
+  if (wavesurfer.value && zoomLevel.value > minZoom) {
+    zoomLevel.value = Math.max(zoomLevel.value - 25, minZoom)
+    wavesurfer.value.zoom(zoomLevel.value)
+  }
+}
+
+const resetZoom = () => {
+  if (wavesurfer.value) {
+    zoomLevel.value = 50
+    wavesurfer.value.zoom(50)
+  }
+}
+
 const formatTime = (seconds) => {
   if (!seconds || isNaN(seconds)) return '0:00'
   const mins = Math.floor(seconds / 60)
   const secs = Math.floor(seconds % 60)
   return `${mins}:${secs.toString().padStart(2, '0')}`
+}
+
+const seekTo = (time) => {
+  if (wavesurfer.value && isReady.value) {
+    wavesurfer.value.seekTo(time / duration.value)
+  }
 }
 
 watch(
@@ -510,6 +598,7 @@ onBeforeUnmount(() => {
 defineExpose({
   stop,
   wavesurfer,
+  seekTo,
 })
 </script>
 

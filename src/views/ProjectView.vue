@@ -79,7 +79,6 @@ import StepDiarization from '@/components/steps/StepDiarization.vue'
 import StepSubtitles from '@/components/steps/StepSubtitles.vue'
 import StepTranslation from '@/components/steps/StepTranslation.vue'
 import StepVoicing from '@/components/steps/StepVoicing.vue'
-import StepConversion from '@/components/steps/StepConversion.vue'
 import StepExport from '@/components/steps/StepExport.vue'
 
 const { t } = useI18n()
@@ -97,7 +96,6 @@ const stepComponents = {
   subtitles: StepSubtitles,
   translation: StepTranslation,
   voicing: StepVoicing,
-  conversion: StepConversion,
   export: StepExport,
 }
 

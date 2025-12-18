@@ -31,6 +31,7 @@
         <!-- Audio Player with Regions -->
         <div class="mb-6">
           <AudioPlayerWithRegions
+            ref="audioPlayerRef"
             :audio-url="audioUrl"
             :file-name="currentAudio?.name"
             :regions="prepareRegions()"
@@ -47,7 +48,7 @@
             @click="toggleSubtitleSelection(subtitle.id)"
             class="p-3 rounded-lg cursor-pointer transition-all"
             :class="[
-              selectedSubtitles.includes(subtitle.id)
+              selectedSubtitle === subtitle.id
                 ? 'bg-violet-600/30 border-2 border-violet-500 shadow-lg shadow-violet-500/50'
                 : activeSubtitleId === subtitle.id
                   ? 'bg-blue-600/20 border-2 border-blue-500'
@@ -59,10 +60,10 @@
             <div class="flex justify-between items-start mb-2">
               <div class="flex items-center gap-2">
                 <input
-                  type="checkbox"
-                  :checked="selectedSubtitles.includes(subtitle.id)"
+                  type="radio"
+                  :checked="selectedSubtitle === subtitle.id"
                   @click.stop="toggleSubtitleSelection(subtitle.id)"
-                  class="w-4 h-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+                  class="w-4 h-4 border-gray-300 text-violet-600 focus:ring-violet-500"
                 />
                 <span class="text-xs" :class="[themeStore.isDark ? 'text-gray-400' : 'text-gray-600']">
                   {{ formatTime(subtitle.startTime) }} - {{ formatTime(subtitle.endTime) }}
@@ -82,14 +83,14 @@
     </div>
 
     <!-- Upload or Record Audio -->
-    <div v-if="selectedSubtitles.length > 0" class="mb-8">
-      <h3 class="text-lg font-semibold mb-4">Озвучка вибраних субтитрів</h3>
+    <div v-if="selectedSubtitle" class="mb-8">
+      <h3 class="text-lg font-semibold mb-4">Озвучка вибраного субтитру</h3>
       <div
         class="p-6 rounded-lg border"
         :class="[themeStore.isDark ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50']"
       >
         <p class="mb-4" :class="[themeStore.isDark ? 'text-gray-400' : 'text-gray-600']">
-          Вибрано субтитрів: {{ selectedSubtitles.length }}
+          Вибрано субтитр: {{ translatedSubtitles.find(s => s.id === selectedSubtitle)?.text }}
         </p>
 
         <div class="flex gap-4">
@@ -315,7 +316,7 @@ const workflowStore = useWorkflowStore()
 
 const currentAudio = ref(null)
 const translatedSubtitles = ref([])
-const selectedSubtitles = ref([])
+const selectedSubtitle = ref(null) // Змінено на одиночний вибір
 const activeSubtitleId = ref(null)
 const mappings = ref([])
 const outputFiles = ref([])
@@ -329,6 +330,7 @@ const recordedChunks = ref([])
 const recordingInterval = ref(null)
 const selectedOutput = ref(null)
 const outputAudioUrl = ref('')
+const audioPlayerRef = ref(null)
 
 onMounted(async () => {
   await loadData()
@@ -406,26 +408,44 @@ async function loadAudioFile() {
 }
 
 function prepareRegions() {
-  return translatedSubtitles.value.map((subtitle) => ({
-    id: subtitle.id,
-    startTime: subtitle.startTime,
-    endTime: subtitle.endTime,
-    label: subtitle.text,
-    text: subtitle.text,
-    color: 'rgba(139, 92, 246, 0.5)',
-  }))
+  return translatedSubtitles.value.map((subtitle) => {
+    // Перевіряємо, чи є озвучка для цього субтитру
+    const hasDubbing = getSubtitleMappings(subtitle.id).length > 0
+
+    return {
+      id: subtitle.id,
+      startTime: subtitle.startTime,
+      endTime: subtitle.endTime,
+      label: subtitle.text,
+      text: subtitle.text,
+      // Зелений колір для озвучених, фіолетовий для неозвучених
+      color: hasDubbing ? 'rgba(34, 197, 94, 0.5)' : 'rgba(139, 92, 246, 0.5)',
+    }
+  })
 }
 
 function handleRegionClick(region) {
   activeSubtitleId.value = activeSubtitleId.value === region.id ? null : region.id
+
+  // Переходимо до часу регіону
+  if (region.id && audioPlayerRef.value && audioPlayerRef.value.seekTo) {
+    audioPlayerRef.value.seekTo(region.startTime)
+  }
 }
 
 function toggleSubtitleSelection(subtitleId) {
-  const index = selectedSubtitles.value.indexOf(subtitleId)
-  if (index > -1) {
-    selectedSubtitles.value.splice(index, 1)
+  // Якщо клікнули на вже вибраний субтитр, знімаємо вибір
+  if (selectedSubtitle.value === subtitleId) {
+    selectedSubtitle.value = null
   } else {
-    selectedSubtitles.value.push(subtitleId)
+    // Інакше вибираємо цей субтитр
+    selectedSubtitle.value = subtitleId
+
+    // Переходимо до часу субтитра
+    const subtitle = translatedSubtitles.value.find((s) => s.id === subtitleId)
+    if (subtitle && audioPlayerRef.value && audioPlayerRef.value.seekTo) {
+      audioPlayerRef.value.seekTo(subtitle.startTime)
+    }
   }
 }
 
@@ -440,7 +460,7 @@ function getSubtitleMappings(subtitleId) {
 
 async function handleAudioUpload(event) {
   const file = event.target.files[0]
-  if (!file) return
+  if (!file || !selectedSubtitle.value) return
 
   try {
     uploading.value = true
@@ -448,11 +468,9 @@ async function handleAudioUpload(event) {
     // Завантажуємо файл як dubbed audio
     const dubbedAudio = await audioApi.uploadDubbed(file)
 
-    // Створюємо маппінги для кожного вибраного субтитру
-    for (const subtitleId of selectedSubtitles.value) {
-      const subtitle = translatedSubtitles.value.find((s) => s.id === subtitleId)
-      if (!subtitle) continue
-
+    // Створюємо маппінг для вибраного субтитру
+    const subtitle = translatedSubtitles.value.find((s) => s.id === selectedSubtitle.value)
+    if (subtitle) {
       const mapping = await mappingsApi.create({
         fromAudio: dubbedAudio.id,
         fromStartTime: 0,
@@ -465,7 +483,7 @@ async function handleAudioUpload(event) {
     }
 
     // Очищаємо вибір
-    selectedSubtitles.value = []
+    selectedSubtitle.value = null
     event.target.value = ''
   } catch (error) {
     console.error('Error uploading audio:', error)
@@ -525,17 +543,17 @@ function stopRecording() {
 }
 
 async function uploadRecordedAudio(file) {
+  if (!selectedSubtitle.value) return
+
   try {
     uploading.value = true
 
     // Завантажуємо файл як dubbed audio
     const dubbedAudio = await audioApi.uploadDubbed(file)
 
-    // Створюємо маппінги для кожного вибраного субтитру
-    for (const subtitleId of selectedSubtitles.value) {
-      const subtitle = translatedSubtitles.value.find((s) => s.id === subtitleId)
-      if (!subtitle) continue
-
+    // Створюємо маппінг для вибраного субтитру
+    const subtitle = translatedSubtitles.value.find((s) => s.id === selectedSubtitle.value)
+    if (subtitle) {
       const mapping = await mappingsApi.create({
         fromAudio: dubbedAudio.id,
         fromStartTime: 0,
@@ -548,7 +566,7 @@ async function uploadRecordedAudio(file) {
     }
 
     // Очищаємо вибір
-    selectedSubtitles.value = []
+    selectedSubtitle.value = null
   } catch (error) {
     console.error('Error uploading recorded audio:', error)
   } finally {

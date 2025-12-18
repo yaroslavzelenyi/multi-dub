@@ -94,6 +94,7 @@
           <!-- Audio Player with Regions for this language -->
           <div v-if="audioUrl" class="mb-4">
             <AudioPlayerWithRegions
+              :ref="(el) => { if (el) audioPlayerRefs[lang] = el }"
               :audio-url="audioUrl"
               :file-name="currentAudio?.name"
               :regions="prepareRegions(lang)"
@@ -121,8 +122,67 @@
                 <span class="text-xs" :class="[themeStore.isDark ? 'text-gray-400' : 'text-gray-600']">
                   {{ formatTime(subtitle.startTime) }} - {{ formatTime(subtitle.endTime) }}
                 </span>
+                <div v-if="editingSubtitleId === subtitle.id" class="flex gap-2">
+                  <button
+                    @click.stop="saveSubtitle(subtitle.id)"
+                    :disabled="savingSubtitle"
+                    class="p-1 rounded bg-green-600 hover:bg-green-700 disabled:bg-gray-500 transition-colors"
+                    title="Зберегти"
+                  >
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    @click.stop="cancelEdit"
+                    :disabled="savingSubtitle"
+                    class="p-1 rounded bg-gray-600 hover:bg-gray-700 disabled:bg-gray-500 transition-colors"
+                    title="Скасувати"
+                  >
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                <button
+                  v-else
+                  @click.stop="editSubtitle(subtitle)"
+                  class="p-1 rounded hover:bg-gray-600 transition-colors"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
+                  </svg>
+                </button>
               </div>
-              <p class="text-sm">{{ subtitle.text }}</p>
+              <input
+                v-if="editingSubtitleId === subtitle.id"
+                v-model="editingSubtitleText"
+                type="text"
+                class="w-full px-3 py-2 text-sm rounded border transition-colors"
+                :class="[
+                  themeStore.isDark
+                    ? 'bg-gray-800 border-gray-600 text-white'
+                    : 'bg-white border-gray-300 text-gray-900',
+                ]"
+                @keyup.enter="saveSubtitle(subtitle.id)"
+                @keyup.esc="cancelEdit"
+              />
+              <p v-else class="text-sm">{{ subtitle.text }}</p>
             </div>
           </div>
         </div>
@@ -156,6 +216,10 @@ const allSubtitles = ref([])
 const translatedLanguages = ref(new Set())
 const audioUrl = ref('')
 const activeSubtitleId = ref(null)
+const editingSubtitleId = ref(null)
+const editingSubtitleText = ref('')
+const savingSubtitle = ref(false)
+const audioPlayerRefs = ref({})
 
 const hasTranslations = computed(() => translatedLanguages.value.size > 0)
 
@@ -258,6 +322,18 @@ function prepareRegions(language) {
 
 function setActiveSubtitle(subtitleId) {
   activeSubtitleId.value = activeSubtitleId.value === subtitleId ? null : subtitleId
+
+  // Знаходимо субтитр і переходимо до його часу
+  if (subtitleId) {
+    const subtitle = allSubtitles.value.find((s) => s.id === subtitleId)
+    if (subtitle) {
+      const lang = subtitle.language
+      const player = audioPlayerRefs.value[lang]
+      if (player && player.seekTo) {
+        player.seekTo(subtitle.startTime)
+      }
+    }
+  }
 }
 
 function handleRegionClick(region) {
@@ -269,5 +345,38 @@ function formatTime(seconds) {
   const secs = Math.floor(seconds % 60)
   const ms = Math.floor((seconds % 1) * 1000)
   return `${mins}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`
+}
+
+function editSubtitle(subtitle) {
+  editingSubtitleId.value = subtitle.id
+  editingSubtitleText.value = subtitle.text
+}
+
+function cancelEdit() {
+  editingSubtitleId.value = null
+  editingSubtitleText.value = ''
+}
+
+async function saveSubtitle(subtitleId) {
+  if (!editingSubtitleText.value.trim()) {
+    return
+  }
+
+  savingSubtitle.value = true
+  try {
+    await subtitlesApi.update(subtitleId, { text: editingSubtitleText.value })
+
+    // Оновлюємо локальні дані
+    const subtitle = allSubtitles.value.find((s) => s.id === subtitleId)
+    if (subtitle) {
+      subtitle.text = editingSubtitleText.value
+    }
+
+    cancelEdit()
+  } catch (error) {
+    console.error('Error saving subtitle:', error)
+  } finally {
+    savingSubtitle.value = false
+  }
 }
 </script>

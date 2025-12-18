@@ -20,7 +20,7 @@
     </div>
 
     <!-- Steps Navigation -->
-    <div class="grid grid-cols-7 gap-2 mb-8">
+    <div class="grid grid-cols-6 gap-2 mb-8">
       <button
         v-for="step in workflowStore.steps"
         :key="step.id"

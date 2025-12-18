@@ -9,8 +9,7 @@ export const useWorkflowStore = defineStore('workflow', () => {
     { id: 3, key: 'subtitles', name: 'Генерація субтитрів', completed: false },
     { id: 4, key: 'translation', name: 'Переклад субтитрів', completed: false },
     { id: 5, key: 'voicing', name: 'Озвучення', completed: false },
-    { id: 6, key: 'conversion', name: 'Конверсія спікерів', completed: false },
-    { id: 7, key: 'export', name: 'Експорт проекту', completed: false },
+    { id: 6, key: 'export', name: 'Експорт проекту', completed: false },
   ]
 
   const currentStep = ref(1)
@@ -20,7 +19,6 @@ export const useWorkflowStore = defineStore('workflow', () => {
     subtitles: { completed: false, data: null },
     translation: { completed: false, data: null },
     voicing: { completed: false, data: null },
-    conversion: { completed: false, data: null },
     export: { completed: false, data: null },
   })
 

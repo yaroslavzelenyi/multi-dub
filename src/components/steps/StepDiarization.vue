@@ -31,7 +31,7 @@
     <button
       @click="runDiarization"
       :disabled="!currentAudio || processing"
-      class="w-full px-6 py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2"
+      class="w-full px-6 py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 mb-4"
       :class="[
         currentAudio && !processing
           ? 'bg-violet-600 hover:bg-violet-700 text-white'
@@ -57,6 +57,25 @@
       <span v-else>{{ $t('workflow.steps.diarization.run') }}</span>
     </button>
 
+    <!-- Processing Spinner -->
+    <div
+      v-if="processing"
+      class="p-4 rounded-lg border flex items-center gap-3"
+      :class="[themeStore.isDark ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50']"
+    >
+      <svg class="animate-spin h-6 w-6 text-violet-600" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path
+          class="opacity-75"
+          fill="currentColor"
+          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+        ></path>
+      </svg>
+      <span :class="[themeStore.isDark ? 'text-gray-300' : 'text-gray-700']">
+        Обробка діаризації... Перевіряємо кожні 10 секунд
+      </span>
+    </div>
+
     <!-- Diarization Results -->
     <div v-if="diarizationSegments.length > 0" class="mt-8">
       <h3 class="text-lg font-semibold mb-4">{{ $t('workflow.steps.diarization.results') }}</h3>
@@ -70,6 +89,7 @@
         <!-- Audio Player with Regions -->
         <div v-if="audioUrl" class="mb-6">
           <AudioPlayerWithRegions
+            ref="audioPlayerRef"
             :audio-url="audioUrl"
             :file-name="currentAudio?.name"
             :regions="prepareRegions()"
@@ -109,7 +129,7 @@
               </div>
             </div>
             <button
-              @click="editSegment(segment)"
+              @click.stop="editSegment(segment)"
               class="p-2 rounded-lg hover:bg-gray-600 transition-colors"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -151,6 +171,8 @@ const processing = ref(false)
 const diarizationSegments = ref([])
 const audioUrl = ref('')
 const activeSegmentId = ref(null)
+const pollingInterval = ref(null)
+const audioPlayerRef = ref(null)
 
 const speakerColors = [
   '#8B5CF6', // violet
@@ -178,6 +200,11 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  // Очищаємо інтервал при знищенні компонента
+  if (pollingInterval.value) {
+    clearInterval(pollingInterval.value)
+  }
+
   // Очищаємо URL
   if (audioUrl.value && audioUrl.value.startsWith('blob:')) {
     URL.revokeObjectURL(audioUrl.value)
@@ -203,6 +230,42 @@ async function loadExistingDiarization() {
   }
 }
 
+async function pollDiarization() {
+  try {
+    // Перевіряємо чи з'явились результати діаризації
+    const allDiarization = await diarizationApi.getAll()
+    const segments = allDiarization.filter((d) => d.forAudio === currentAudio.value.id)
+
+    if (segments.length > diarizationSegments.value.length) {
+      // Знайдено нові сегменти, оновлюємо і зупиняємо поллінг
+      diarizationSegments.value = segments
+      stopPolling()
+      processing.value = false
+
+      // Завантажуємо аудіофайл якщо потрібно
+      if (!audioUrl.value) {
+        await loadAudioFile()
+      }
+    }
+  } catch (error) {
+    console.error('Error polling diarization:', error)
+  }
+}
+
+function startPolling() {
+  if (pollingInterval.value) {
+    clearInterval(pollingInterval.value)
+  }
+  pollingInterval.value = setInterval(pollDiarization, 10000) // Кожні 10 секунд
+}
+
+function stopPolling() {
+  if (pollingInterval.value) {
+    clearInterval(pollingInterval.value)
+    pollingInterval.value = null
+  }
+}
+
 async function runDiarization() {
   if (!currentAudio.value) return
 
@@ -211,12 +274,15 @@ async function runDiarization() {
     // Викликаємо API для діаризації
     await diarizationApi.apply({ forAudio: [currentAudio.value.id] })
 
-    // Перезавантажуємо результати
-    await loadExistingDiarization()
+    // Запускаємо поллінг для перевірки появи результатів
+    startPolling()
+
+    // Також одразу перевіряємо
+    await pollDiarization()
   } catch (error) {
     console.error('Error running diarization:', error)
-  } finally {
     processing.value = false
+    stopPolling()
   }
 }
 
@@ -269,6 +335,14 @@ function prepareRegions() {
 
 function setActiveSegment(segmentId) {
   activeSegmentId.value = activeSegmentId.value === segmentId ? null : segmentId
+
+  // Знаходимо сегмент і переходимо до його часу
+  if (segmentId) {
+    const segment = diarizationSegments.value.find((s) => s.id === segmentId)
+    if (segment && audioPlayerRef.value && audioPlayerRef.value.seekTo) {
+      audioPlayerRef.value.seekTo(segment.startTime)
+    }
+  }
 }
 
 function handleRegionClick(region) {

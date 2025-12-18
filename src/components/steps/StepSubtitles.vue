@@ -133,6 +133,7 @@
         <!-- Audio Player with Regions -->
         <div v-if="audioUrls[audioId]" class="mb-6">
           <AudioPlayerWithRegions
+            :ref="(el) => { if (el) audioPlayerRefs[audioId] = el }"
             :audio-url="audioUrls[audioId]"
             :file-name="getAudioName(audioId)"
             :regions="prepareRegions(subs)"
@@ -261,6 +262,7 @@ const editingSubtitleText = ref('')
 const savingSubtitle = ref(false)
 const audioUrls = ref({})
 const activeSubtitleId = ref(null)
+const audioPlayerRefs = ref({})
 
 const subtitlesByAudio = computed(() => {
   const grouped = {}
@@ -494,6 +496,18 @@ function prepareRegions(subtitles) {
 
 function setActiveSubtitle(subtitleId) {
   activeSubtitleId.value = activeSubtitleId.value === subtitleId ? null : subtitleId
+
+  // Знаходимо субтитр і переходимо до його часу
+  if (subtitleId) {
+    const subtitle = allSubtitles.value.find((s) => s.id === subtitleId)
+    if (subtitle) {
+      const audioId = subtitle.forAudio
+      const player = audioPlayerRefs.value[audioId]
+      if (player && player.seekTo) {
+        player.seekTo(subtitle.startTime)
+      }
+    }
+  }
 }
 
 function handleRegionClick(region) {

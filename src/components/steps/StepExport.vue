@@ -89,7 +89,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useThemeStore } from '@/stores/theme'
 import { useWorkflowStore } from '@/stores/workflow'
-import { subtitlesApi } from '@/api/handlers'
+import { subtitlesApi, audioApi, mappingsApi } from '@/api/handlers'
 
 const themeStore = useThemeStore()
 const workflowStore = useWorkflowStore()
@@ -98,10 +98,24 @@ const audioFiles = ref([])
 const processing = reactive({})
 const exportedFiles = ref([])
 
-onMounted(() => {
-  const uploadData = workflowStore.getStepData('upload')
-  if (uploadData?.audioFiles) {
-    audioFiles.value = uploadData.audioFiles
+onMounted(async () => {
+  // Отримуємо вихідні файли з кроку voicing
+  const voicingData = workflowStore.getStepData('voicing')
+  if (voicingData?.outputs && voicingData.outputs.length > 0) {
+    audioFiles.value = voicingData.outputs
+  } else {
+    // Якщо немає файлів з voicing, пробуємо завантажити з API
+    const uploadData = workflowStore.getStepData('upload')
+    if (uploadData?.audioFiles && uploadData.audioFiles.length > 0) {
+      try {
+        const outputs = await mappingsApi.getOutputsForAudio(uploadData.audioFiles[0].id)
+        if (outputs && outputs.length > 0) {
+          audioFiles.value = outputs
+        }
+      } catch (error) {
+        console.error('Error loading outputs:', error)
+      }
+    }
   }
 })
 
@@ -136,11 +150,30 @@ async function exportSubtitles(audioId, format) {
 async function exportAudio(audioId) {
   processing[audioId] = true
   try {
-    // TODO: Імплементувати експорт аудіо через API
     const audio = audioFiles.value.find((a) => a.id === audioId)
-    exportedFiles.value.push(`${audio.name}.mp3`)
+    if (!audio) {
+      console.error('Audio file not found')
+      return
+    }
+
+    // Завантажуємо аудіофайл з API
+    const fileName = audio.fileName || audio.name
+    const blob = await audioApi.getFile(fileName)
+
+    // Створюємо посилання для завантаження
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = fileName
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+
+    exportedFiles.value.push(fileName)
   } catch (error) {
     console.error('Error exporting audio:', error)
+    alert('Помилка при завантаженні аудіофайлу. Спробуйте ще раз.')
   } finally {
     processing[audioId] = false
   }
