@@ -8,7 +8,7 @@
           {{ formatTime(recordingTime) }}
         </span>
         <span v-else-if="audioBlob" class="text-sm text-green-500 font-medium">
-          Готово ({{ formatTime(recordingDuration) }})
+          {{ t('common.ready') }} ({{ formatTime(recordingDuration) }})
         </span>
       </div>
     </div>

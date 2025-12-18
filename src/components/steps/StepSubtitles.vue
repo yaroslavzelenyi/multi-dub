@@ -30,7 +30,8 @@
           <div class="ml-4 flex-1">
             <h4 class="font-medium">{{ audio.name }}</h4>
             <p class="text-sm" :class="[themeStore.isDark ? 'text-gray-400' : 'text-gray-600']">
-              {{ subtitleCounts[audio.id] || 0 }} {{ $t('workflow.steps.subtitles.subtitlesCount') }}
+              {{ subtitleCounts[audio.id] || 0 }}
+              {{ $t('workflow.steps.subtitles.subtitlesCount') }}
             </p>
           </div>
           <span
@@ -54,13 +55,15 @@
           : 'bg-gray-700 text-gray-500 cursor-not-allowed',
       ]"
     >
-      <svg
-        v-if="processing"
-        class="animate-spin h-5 w-5"
-        fill="none"
-        viewBox="0 0 24 24"
-      >
-        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+      <svg v-if="processing" class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+        <circle
+          class="opacity-25"
+          cx="12"
+          cy="12"
+          r="10"
+          stroke="currentColor"
+          stroke-width="4"
+        ></circle>
         <path
           class="opacity-75"
           fill="currentColor"
@@ -78,7 +81,14 @@
       :class="[themeStore.isDark ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50']"
     >
       <svg class="animate-spin h-6 w-6 text-violet-600" fill="none" viewBox="0 0 24 24">
-        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <circle
+          class="opacity-25"
+          cx="12"
+          cy="12"
+          r="10"
+          stroke="currentColor"
+          stroke-width="4"
+        ></circle>
         <path
           class="opacity-75"
           fill="currentColor"
@@ -86,7 +96,7 @@
         ></path>
       </svg>
       <span :class="[themeStore.isDark ? 'text-gray-300' : 'text-gray-700']">
-        Генерація субтитрів... Перевіряємо кожні 10 секунд
+        Генерація субтитрів...
       </span>
     </div>
 
@@ -97,7 +107,10 @@
 
         <!-- Language Filter -->
         <div class="flex items-center gap-2">
-          <label class="text-sm font-medium" :class="[themeStore.isDark ? 'text-gray-300' : 'text-gray-700']">
+          <label
+            class="text-sm font-medium"
+            :class="[themeStore.isDark ? 'text-gray-300' : 'text-gray-700']"
+          >
             Фільтр по мові:
           </label>
           <select
@@ -133,7 +146,11 @@
         <!-- Audio Player with Regions -->
         <div v-if="audioUrls[audioId]" class="mb-6">
           <AudioPlayerWithRegions
-            :ref="(el) => { if (el) audioPlayerRefs[audioId] = el }"
+            :ref="
+              (el) => {
+                if (el) audioPlayerRefs[audioId] = el
+              }
+            "
             :audio-url="audioUrls[audioId]"
             :file-name="getAudioName(audioId)"
             :regions="prepareRegions(subs)"
@@ -161,7 +178,10 @@
                 <span class="text-xs px-2 py-1 rounded bg-violet-600 text-white">
                   {{ subtitle.language.toUpperCase() }}
                 </span>
-                <span class="text-xs" :class="[themeStore.isDark ? 'text-gray-400' : 'text-gray-600']">
+                <span
+                  class="text-xs"
+                  :class="[themeStore.isDark ? 'text-gray-400' : 'text-gray-600']"
+                >
                   {{ formatTime(subtitle.startTime) }} - {{ formatTime(subtitle.endTime) }}
                 </span>
               </div>
@@ -172,7 +192,12 @@
                   class="p-1 rounded bg-green-600 hover:bg-green-700 disabled:bg-gray-500 transition-colors"
                   title="Зберегти"
                 >
-                  <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg
+                    class="w-4 h-4 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <path
                       stroke-linecap="round"
                       stroke-linejoin="round"
@@ -187,7 +212,12 @@
                   class="p-1 rounded bg-gray-600 hover:bg-gray-700 disabled:bg-gray-500 transition-colors"
                   title="Скасувати"
                 >
-                  <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg
+                    class="w-4 h-4 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <path
                       stroke-linecap="round"
                       stroke-linejoin="round"

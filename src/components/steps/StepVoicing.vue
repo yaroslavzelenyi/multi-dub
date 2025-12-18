@@ -2,12 +2,12 @@
   <div class="step-voicing">
     <h2 class="text-2xl font-bold mb-6">{{ $t('workflow.steps.voicing.title') }}</h2>
     <p class="mb-8" :class="[themeStore.isDark ? 'text-gray-400' : 'text-gray-600']">
-      Завантажте озвучені переклади субтитрів або запишіть їх через мікрофон, а потім прив'яжіть до потрібних місць у вихідному аудіо.
+      {{ $t('voicing.description') }}
     </p>
 
     <!-- Current Audio Info -->
     <div v-if="currentAudio" class="mb-8">
-      <h3 class="text-lg font-semibold mb-4">Оригінальне аудіо</h3>
+      <h3 class="text-lg font-semibold mb-4">{{ $t('voicing.originalAudio') }}</h3>
       <div
         class="flex items-center p-4 rounded-lg border"
         :class="[themeStore.isDark ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50']"
@@ -23,7 +23,7 @@
 
     <!-- Audio Player with Regions and Subtitles -->
     <div v-if="audioUrl && translatedSubtitles.length > 0" class="mb-8">
-      <h3 class="text-lg font-semibold mb-4">Перекладені субтитри</h3>
+      <h3 class="text-lg font-semibold mb-4">{{ $t('voicing.translatedSubtitles') }}</h3>
       <div
         class="p-6 rounded-lg border"
         :class="[themeStore.isDark ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50']"
@@ -73,7 +73,7 @@
                 v-if="getSubtitleMappings(subtitle.id).length > 0"
                 class="text-xs px-2 py-1 rounded-full bg-green-600 text-white"
               >
-                {{ getSubtitleMappings(subtitle.id).length }} озвучок
+                {{ getSubtitleMappings(subtitle.id).length }} {{ $t('voicing.voicings') }}
               </span>
             </div>
             <p class="text-sm">{{ subtitle.text }}</p>
@@ -84,13 +84,13 @@
 
     <!-- Upload or Record Audio -->
     <div v-if="selectedSubtitle" class="mb-8">
-      <h3 class="text-lg font-semibold mb-4">Озвучка вибраного субтитру</h3>
+      <h3 class="text-lg font-semibold mb-4">{{ $t('voicing.selectedSubtitleVoicing') }}</h3>
       <div
         class="p-6 rounded-lg border"
         :class="[themeStore.isDark ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50']"
       >
         <p class="mb-4" :class="[themeStore.isDark ? 'text-gray-400' : 'text-gray-600']">
-          Вибрано субтитр: {{ translatedSubtitles.find(s => s.id === selectedSubtitle)?.text }}
+          {{ $t('voicing.selectedSubtitle') }} {{ translatedSubtitles.find(s => s.id === selectedSubtitle)?.text }}
         </p>
 
         <div class="flex gap-4">
@@ -104,8 +104,8 @@
               class="hidden"
               :disabled="uploading"
             />
-            <span v-if="uploading">Завантаження...</span>
-            <span v-else>📁 Завантажити аудіо</span>
+            <span v-if="uploading">{{ $t('voicing.uploading') }}</span>
+            <span v-else>📁 {{ $t('voicing.uploadAudio') }}</span>
           </label>
 
           <button
@@ -117,14 +117,14 @@
                 : 'bg-blue-600 hover:bg-blue-700 text-white',
             ]"
           >
-            {{ recording ? '⏹️ Зупинити запис' : '🎤 Записати через мікрофон' }}
+            {{ recording ? '⏹️ ' + $t('voicing.stopRecording') : '🎤 ' + $t('voicing.recordMicrophone') }}
           </button>
         </div>
 
         <div v-if="recording" class="mt-4 p-4 bg-red-600/20 rounded-lg">
           <div class="flex items-center gap-3">
             <div class="w-3 h-3 bg-red-600 rounded-full animate-pulse"></div>
-            <span class="text-red-600 font-medium">Запис... {{ recordingTime }}с</span>
+            <span class="text-red-600 font-medium">{{ $t('voicing.recording') }} {{ recordingTime }}с</span>
           </div>
         </div>
       </div>
@@ -132,7 +132,7 @@
 
     <!-- Created Mappings -->
     <div v-if="mappings.length > 0" class="mb-8">
-      <h3 class="text-lg font-semibold mb-4">Створені маппінги ({{ mappings.length }})</h3>
+      <h3 class="text-lg font-semibold mb-4">{{ $t('voicing.createdMappings') }} ({{ mappings.length }})</h3>
       <div class="space-y-3">
         <div
           v-for="mapping in mappings"
@@ -143,7 +143,7 @@
           <div class="flex-1">
             <div class="flex items-center gap-2 mb-2">
               <span class="text-xs px-2 py-1 rounded bg-violet-600 text-white">
-                Dubbed Audio #{{ mapping.fromAudio }}
+                {{ $t('voicing.dubbedAudio') }} #{{ mapping.fromAudio }}
               </span>
               <span class="text-xs" :class="[themeStore.isDark ? 'text-gray-400' : 'text-gray-600']">
                 {{ formatTime(mapping.fromStartTime) }} - {{ formatTime(mapping.fromEndTime) }}
@@ -152,17 +152,17 @@
             <div class="flex items-center gap-2">
               <span class="text-xs">→</span>
               <span class="text-xs px-2 py-1 rounded bg-blue-600 text-white">
-                Original Audio
+                {{ $t('voicing.originalAudioLabel') }}
               </span>
               <span class="text-xs" :class="[themeStore.isDark ? 'text-gray-400' : 'text-gray-600']">
-                з {{ formatTime(mapping.toStartTime) }}
+                {{ $t('voicing.from') }} {{ formatTime(mapping.toStartTime) }}
               </span>
             </div>
           </div>
           <button
             @click="deleteMapping(mapping.id)"
             class="p-2 rounded-lg transition-colors text-red-500 hover:bg-red-500/20"
-            title="Видалити"
+            :title="$t('common.delete')"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -204,14 +204,14 @@
             d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
           ></path>
         </svg>
-        <span v-if="producing">Створення фінального аудіо...</span>
-        <span v-else>🎬 Створити фінальне аудіо</span>
+        <span v-if="producing">{{ $t('voicing.producing') }}</span>
+        <span v-else>🎬 {{ $t('voicing.createFinalAudio') }}</span>
       </button>
     </div>
 
     <!-- Output Files -->
     <div v-if="outputFiles.length > 0" class="mb-8">
-      <h3 class="text-lg font-semibold mb-4">Готові файли</h3>
+      <h3 class="text-lg font-semibold mb-4">{{ $t('voicing.readyFiles') }}</h3>
       <div class="space-y-3">
         <div
           v-for="output in outputFiles"
@@ -233,7 +233,7 @@
                 ? 'hover:bg-gray-700 text-gray-400 hover:text-white'
                 : 'hover:bg-gray-200 text-gray-600 hover:text-gray-900',
             ]"
-            title="Відтворити"
+            :title="$t('common.play')"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -258,7 +258,7 @@
         @click="completeStep"
         class="mt-6 w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
       >
-        Завершити крок
+        {{ $t('voicing.completeStep') }}
       </button>
     </div>
 
@@ -306,11 +306,13 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useThemeStore } from '@/stores/theme'
 import { useWorkflowStore } from '@/stores/workflow'
 import { subtitlesApi, audioApi, mappingsApi } from '@/api/handlers'
 import AudioPlayerWithRegions from '@/components/AudioPlayerWithRegions.vue'
 
+const { t } = useI18n()
 const themeStore = useThemeStore()
 const workflowStore = useWorkflowStore()
 

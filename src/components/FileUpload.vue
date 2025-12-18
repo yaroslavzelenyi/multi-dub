@@ -54,7 +54,7 @@
               themeStore.isDark ? 'text-gray-200' : 'text-gray-700',
             ]"
           >
-            {{ isDragging ? t('upload.dropHere') : t('upload.dragFile') }}
+            {{ isDragging ? 'Drop file here' : 'Drag audio file here' }}
           </p>
           <p
             :class="[
@@ -62,7 +62,7 @@
               themeStore.isDark ? 'text-gray-400' : 'text-gray-500',
             ]"
           >
-            {{ t('upload.clickToSelect') }}
+            or click to select file
           </p>
         </div>
 
@@ -97,10 +97,8 @@
 
 <script setup>
 import { ref } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { useThemeStore } from '@/stores/theme'
 
-const { t } = useI18n()
 const themeStore = useThemeStore()
 
 const emit = defineEmits(['file-selected'])
@@ -124,12 +122,12 @@ const validateFile = (file) => {
   }
 
   if (!file.type.startsWith('audio/')) {
-    errorMessage.value = t('upload.errors.notAudio')
+    errorMessage.value = 'Please upload an audio file'
     return false
   }
 
   if (file.size > maxFileSize) {
-    errorMessage.value = t('upload.errors.tooLarge')
+    errorMessage.value = 'File is too large. Maximum size: 100MB'
     return false
   }
 

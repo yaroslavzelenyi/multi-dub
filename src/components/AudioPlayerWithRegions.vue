@@ -30,10 +30,15 @@
                 ? 'hover:bg-gray-700 text-gray-400'
                 : 'hover:bg-gray-200 text-gray-600',
             ]"
-            title="Зменшити масштаб"
+            :title="$t('player.zoomOut')"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"
+              />
             </svg>
           </button>
 
@@ -46,7 +51,7 @@
                 ? 'hover:bg-gray-700 text-gray-400'
                 : 'hover:bg-gray-200 text-gray-600',
             ]"
-            title="Скинути масштаб"
+            :title="$t('player.resetZoom')"
           >
             100%
           </button>
@@ -60,10 +65,15 @@
                 ? 'hover:bg-gray-700 text-gray-400'
                 : 'hover:bg-gray-200 text-gray-600',
             ]"
-            title="Збільшити масштаб"
+            :title="$t('player.zoomIn')"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7"
+              />
             </svg>
           </button>
         </div>
@@ -276,7 +286,7 @@
             d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
           ></path>
         </svg>
-        <span>Loading...</span>
+        <span>{{ $t('player.loading') }}</span>
       </div>
     </div>
   </div>

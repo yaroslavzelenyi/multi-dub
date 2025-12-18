@@ -64,7 +64,14 @@
       :class="[themeStore.isDark ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50']"
     >
       <svg class="animate-spin h-6 w-6 text-violet-600" fill="none" viewBox="0 0 24 24">
-        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <circle
+          class="opacity-25"
+          cx="12"
+          cy="12"
+          r="10"
+          stroke="currentColor"
+          stroke-width="4"
+        ></circle>
         <path
           class="opacity-75"
           fill="currentColor"
@@ -72,7 +79,7 @@
         ></path>
       </svg>
       <span :class="[themeStore.isDark ? 'text-gray-300' : 'text-gray-700']">
-        Обробка діаризації... Перевіряємо кожні 10 секунд
+        Обробка діаризації...
       </span>
     </div>
 

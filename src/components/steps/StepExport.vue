@@ -24,28 +24,15 @@
             </div>
           </div>
 
-          <!-- Export Buttons -->
-          <div class="flex gap-2">
-            <button
-              @click="exportSubtitles(audio.id, 'srt')"
-              class="flex-1 px-4 py-2 rounded-lg font-medium transition-colors"
-              :class="[
-                themeStore.isDark
-                  ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                  : 'bg-gray-200 hover:bg-gray-300 text-gray-900',
-              ]"
-            >
-              {{ $t('workflow.steps.export.subtitles') }} (SRT)
-            </button>
-            <button
-              @click="exportAudio(audio.id)"
-              :disabled="processing[audio.id]"
-              class="flex-1 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span v-if="processing[audio.id]">{{ $t('workflow.steps.export.processing') }}...</span>
-              <span v-else>{{ $t('workflow.steps.export.audio') }}</span>
-            </button>
-          </div>
+          <!-- Export Button -->
+          <button
+            @click="exportAudio(audio.id)"
+            :disabled="processing[audio.id]"
+            class="w-full px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span v-if="processing[audio.id]">{{ $t('workflow.steps.export.processing') }}...</span>
+            <span v-else>{{ $t('workflow.steps.export.audio') }}</span>
+          </button>
         </div>
       </div>
     </div>
@@ -89,7 +76,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useThemeStore } from '@/stores/theme'
 import { useWorkflowStore } from '@/stores/workflow'
-import { subtitlesApi, audioApi, mappingsApi } from '@/api/handlers'
+import { audioApi, mappingsApi } from '@/api/handlers'
 
 const themeStore = useThemeStore()
 const workflowStore = useWorkflowStore()
@@ -118,34 +105,6 @@ onMounted(async () => {
     }
   }
 })
-
-async function exportSubtitles(audioId, format) {
-  try {
-    const subtitles = await subtitlesApi.getForAudio(audioId)
-    const audio = audioFiles.value.find((a) => a.id === audioId)
-
-    // Генеруємо SRT файл
-    let srtContent = ''
-    subtitles.forEach((sub, index) => {
-      srtContent += `${index + 1}\n`
-      srtContent += `${formatSrtTime(sub.startTime)} --> ${formatSrtTime(sub.endTime)}\n`
-      srtContent += `${sub.text}\n\n`
-    })
-
-    // Завантажуємо файл
-    const blob = new Blob([srtContent], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${audio.name}.${sub.language}.srt`
-    a.click()
-    URL.revokeObjectURL(url)
-
-    exportedFiles.value.push(`${audio.name}.srt`)
-  } catch (error) {
-    console.error('Error exporting subtitles:', error)
-  }
-}
 
 async function exportAudio(audioId) {
   processing[audioId] = true
@@ -188,14 +147,5 @@ function formatFileSize(bytes) {
   if (bytes < 1024) return bytes + ' B'
   if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB'
   return (bytes / (1024 * 1024)).toFixed(2) + ' MB'
-}
-
-function formatSrtTime(seconds) {
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  const secs = Math.floor(seconds % 60)
-  const ms = Math.floor((seconds % 1) * 1000)
-
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')},${ms.toString().padStart(3, '0')}`
 }
 </script>

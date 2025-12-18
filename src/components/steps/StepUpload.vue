@@ -262,6 +262,7 @@
 
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useThemeStore } from '@/stores/theme'
 import { useWorkflowStore } from '@/stores/workflow'
 import { audioApi } from '@/api/handlers'
@@ -270,6 +271,7 @@ import VoiceRecorder from '@/components/VoiceRecorder.vue'
 import AudioPlayer from '@/components/AudioPlayer.vue'
 import AudioEditor from '@/components/AudioEditor.vue'
 
+const { t } = useI18n()
 const themeStore = useThemeStore()
 const workflowStore = useWorkflowStore()
 
@@ -285,12 +287,6 @@ const pendingFileUrl = ref(null)
 const pendingRecording = ref(null)
 const pendingRecordingUrl = ref(null)
 const isUploading = ref(false)
-const originalFile = ref(null) // Оригінальний файл до редагування
-const originalRecording = ref(null)
-const fileWasEdited = ref(false)
-const recordingWasEdited = ref(false)
-const originalFileType = ref(null) // MIME type оригінального файлу
-const originalRecordingType = ref(null)
 
 onMounted(async () => {
   await loadAudioFiles()
@@ -323,84 +319,12 @@ async function loadAudioFiles() {
 
 function handleFileSelected(file) {
   pendingFile.value = file
-  originalFile.value = file // Зберігаємо оригінал
-  originalFileType.value = file.type // Зберігаємо тип
-  fileWasEdited.value = false
   pendingFileUrl.value = URL.createObjectURL(file)
 }
 
 function handleRecordingComplete(file) {
   pendingRecording.value = file
-  originalRecording.value = file // Зберігаємо оригінал
-  originalRecordingType.value = file.type // Зберігаємо тип
-  recordingWasEdited.value = false
   pendingRecordingUrl.value = URL.createObjectURL(file)
-}
-
-// Функція конвертації WAV в оригінальний формат
-async function convertToOriginalFormat(wavFile, targetMimeType) {
-  return new Promise(async (resolve, reject) => {
-    try {
-      // Створюємо audio element для відтворення
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)()
-      const arrayBuffer = await wavFile.arrayBuffer()
-      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
-
-      // Створюємо MediaStreamSource з audio buffer
-      const source = audioContext.createBufferSource()
-      source.buffer = audioBuffer
-
-      const destination = audioContext.createMediaStreamDestination()
-      source.connect(destination)
-
-      // Визначаємо MIME type для MediaRecorder
-      let mimeType = 'audio/webm;codecs=opus' // fallback
-      if (targetMimeType.includes('mp3')) {
-        // Браузери не підтримують пряме запис в MP3, використовуємо webm
-        mimeType = 'audio/webm;codecs=opus'
-      } else if (targetMimeType.includes('ogg')) {
-        mimeType = 'audio/ogg;codecs=opus'
-      } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-        mimeType = 'audio/mp4'
-      }
-
-      const mediaRecorder = new MediaRecorder(destination.stream, {
-        mimeType: mimeType,
-        audioBitsPerSecond: 128000,
-      })
-
-      const chunks = []
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
-          chunks.push(e.data)
-        }
-      }
-
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: mimeType })
-        audioContext.close()
-        resolve(blob)
-      }
-
-      mediaRecorder.onerror = (error) => {
-        audioContext.close()
-        reject(error)
-      }
-
-      // Запускаємо запис
-      mediaRecorder.start()
-      source.start(0)
-
-      // Зупиняємо після закінчення
-      source.onended = () => {
-        setTimeout(() => {
-          mediaRecorder.stop()
-        }, 100)
-      }
-    } catch (error) {
-      reject(error)
-    }
-  })
 }
 
 function cancelPendingFile() {
@@ -409,9 +333,6 @@ function cancelPendingFile() {
   }
   pendingFile.value = null
   pendingFileUrl.value = null
-  originalFile.value = null
-  originalFileType.value = null
-  fileWasEdited.value = false
 }
 
 function cancelPendingRecording() {
@@ -420,18 +341,12 @@ function cancelPendingRecording() {
   }
   pendingRecording.value = null
   pendingRecordingUrl.value = null
-  originalRecording.value = null
-  originalRecordingType.value = null
-  recordingWasEdited.value = false
 }
 
 function handleFileAudioUpdated(blob) {
-  // Позначаємо файл як відредагований
-  fileWasEdited.value = true
-
-  // Оновлюємо файл на відредаговану версію (оптимізований WAV)
-  const originalName = originalFile.value?.name || 'edited-audio.wav'
-  const fileName = originalName.replace(/\.[^/.]+$/, '.wav') // Змінюємо розширення на .wav
+  // Оновлюємо файл на відредаговану версію (WAV)
+  const originalName = pendingFile.value?.name || 'edited-audio.wav'
+  const fileName = originalName.replace(/\.[^/.]+$/, '.wav')
   pendingFile.value = new File([blob], fileName, { type: 'audio/wav' })
 
   // Оновлюємо URL для waveform
@@ -442,12 +357,9 @@ function handleFileAudioUpdated(blob) {
 }
 
 function handleRecordingAudioUpdated(blob) {
-  // Позначаємо запис як відредагований
-  recordingWasEdited.value = true
-
-  // Оновлюємо запис на відредаговану версію (оптимізований WAV)
-  const originalName = originalRecording.value?.name || 'edited-recording.wav'
-  const fileName = originalName.replace(/\.[^/.]+$/, '.wav') // Змінюємо розширення на .wav
+  // Оновлюємо запис на відредаговану версію (WAV)
+  const originalName = pendingRecording.value?.name || 'edited-recording.wav'
+  const fileName = originalName.replace(/\.[^/.]+$/, '.wav')
   pendingRecording.value = new File([blob], fileName, { type: 'audio/wav' })
 
   // Оновлюємо URL для waveform
@@ -463,34 +375,11 @@ async function uploadPendingFile() {
   try {
     isUploading.value = true
 
-    let fileToUpload = originalFile.value
-
-    // Якщо файл був відредагований, конвертуємо WAV назад в оригінальний формат
-    if (fileWasEdited.value) {
-      console.log(
-        `Конвертація відредагованого файлу з WAV в ${originalFileType.value}...`,
-      )
-
-      try {
-        const convertedBlob = await convertToOriginalFormat(pendingFile.value, originalFileType.value)
-        const originalName = originalFile.value?.name || 'edited-audio'
-        const extension = originalName.split('.').pop()
-        fileToUpload = new File([convertedBlob], originalName, { type: convertedBlob.type })
-
-        console.log(
-          `Конвертація завершена: ${fileToUpload.name}, розмір: ${(fileToUpload.size / 1024 / 1024).toFixed(2)} MB`,
-        )
-      } catch (convertError) {
-        console.error('Помилка конвертації, використовуємо WAV:', convertError)
-        fileToUpload = pendingFile.value
-      }
-    }
-
     console.log(
-      `Завантаження файлу: ${fileToUpload.name}, розмір: ${(fileToUpload.size / 1024 / 1024).toFixed(2)} MB, відредагований: ${fileWasEdited.value}`,
+      `${t('upload.uploadingFile')}: ${pendingFile.value.name}, ${t('analysis.size')}: ${(pendingFile.value.size / 1024 / 1024).toFixed(2)} MB`,
     )
 
-    const uploaded = await audioApi.uploadRaw(fileToUpload)
+    const uploaded = await audioApi.uploadRaw(pendingFile.value)
     audioFiles.value.push(uploaded)
 
     // Clean up
@@ -508,36 +397,11 @@ async function uploadPendingRecording() {
   try {
     isUploading.value = true
 
-    let fileToUpload = originalRecording.value
-
-    // Якщо запис був відредагований, конвертуємо WAV назад в оригінальний формат
-    if (recordingWasEdited.value) {
-      console.log(
-        `Конвертація відредагованого запису з WAV в ${originalRecordingType.value}...`,
-      )
-
-      try {
-        const convertedBlob = await convertToOriginalFormat(
-          pendingRecording.value,
-          originalRecordingType.value,
-        )
-        const originalName = originalRecording.value?.name || 'edited-recording'
-        fileToUpload = new File([convertedBlob], originalName, { type: convertedBlob.type })
-
-        console.log(
-          `Конвертація завершена: ${fileToUpload.name}, розмір: ${(fileToUpload.size / 1024 / 1024).toFixed(2)} MB`,
-        )
-      } catch (convertError) {
-        console.error('Помилка конвертації, використовуємо WAV:', convertError)
-        fileToUpload = pendingRecording.value
-      }
-    }
-
     console.log(
-      `Завантаження запису: ${fileToUpload.name}, розмір: ${(fileToUpload.size / 1024 / 1024).toFixed(2)} MB, відредагований: ${recordingWasEdited.value}`,
+      `${t('upload.uploadingRecording')}: ${pendingRecording.value.name}, ${t('analysis.size')}: ${(pendingRecording.value.size / 1024 / 1024).toFixed(2)} MB`,
     )
 
-    const uploaded = await audioApi.uploadRaw(fileToUpload)
+    const uploaded = await audioApi.uploadRaw(pendingRecording.value)
     audioFiles.value.push(uploaded)
 
     // Clean up
@@ -584,7 +448,7 @@ function closeAudioPlayer() {
 }
 
 async function handleDeleteAudio(audioId) {
-  if (confirm('Видалити цей аудіофайл?')) {
+  if (confirm(t('upload.confirmDelete'))) {
     try {
       await audioApi.delete(audioId)
       audioFiles.value = audioFiles.value.filter((a) => a.id !== audioId)
