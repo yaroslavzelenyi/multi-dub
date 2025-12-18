@@ -5,51 +5,35 @@
       {{ $t('workflow.steps.diarization.description') }}
     </p>
 
-    <!-- Audio Files Selection -->
-    <div class="mb-8">
-      <h3 class="text-lg font-semibold mb-4">{{ $t('workflow.steps.diarization.selectFiles') }}</h3>
-      <div class="space-y-3">
-        <label
-          v-for="audio in audioFiles"
-          :key="audio.id"
-          class="flex items-center p-4 rounded-lg border cursor-pointer transition-all"
-          :class="[
-            selectedAudioIds.includes(audio.id)
-              ? 'border-violet-600 bg-violet-600/10'
-              : themeStore.isDark
-                ? 'border-gray-700 bg-gray-800 hover:border-gray-600'
-                : 'border-gray-200 bg-gray-50 hover:border-gray-300',
-          ]"
+    <!-- Current Audio File Info -->
+    <div v-if="currentAudio" class="mb-8">
+      <h3 class="text-lg font-semibold mb-4">Аудіофайл</h3>
+      <div
+        class="flex items-center p-4 rounded-lg border"
+        :class="[themeStore.isDark ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50']"
+      >
+        <div class="flex-1">
+          <h4 class="font-medium">{{ currentAudio.name }}</h4>
+          <p class="text-sm" :class="[themeStore.isDark ? 'text-gray-400' : 'text-gray-600']">
+            {{ formatFileSize(currentAudio.size) }}
+          </p>
+        </div>
+        <span
+          v-if="diarizationSegments.length > 0"
+          class="text-sm px-3 py-1 rounded-full bg-green-600 text-white"
         >
-          <input
-            type="checkbox"
-            :value="audio.id"
-            v-model="selectedAudioIds"
-            class="w-5 h-5 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
-          />
-          <div class="ml-4 flex-1">
-            <h4 class="font-medium">{{ audio.name }}</h4>
-            <p class="text-sm" :class="[themeStore.isDark ? 'text-gray-400' : 'text-gray-600']">
-              {{ formatFileSize(audio.size) }}
-            </p>
-          </div>
-          <span
-            v-if="diarizationResults[audio.id]"
-            class="text-sm px-3 py-1 rounded-full bg-green-600 text-white"
-          >
-            {{ $t('workflow.steps.diarization.completed') }}
-          </span>
-        </label>
+          {{ $t('workflow.steps.diarization.completed') }}
+        </span>
       </div>
     </div>
 
     <!-- Run Diarization Button -->
     <button
       @click="runDiarization"
-      :disabled="selectedAudioIds.length === 0 || processing"
+      :disabled="!currentAudio || processing"
       class="w-full px-6 py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2"
       :class="[
-        selectedAudioIds.length > 0 && !processing
+        currentAudio && !processing
           ? 'bg-violet-600 hover:bg-violet-700 text-white'
           : 'bg-gray-700 text-gray-500 cursor-not-allowed',
       ]"
@@ -74,23 +58,39 @@
     </button>
 
     <!-- Diarization Results -->
-    <div v-if="Object.keys(diarizationResults).length > 0" class="mt-8">
+    <div v-if="diarizationSegments.length > 0" class="mt-8">
       <h3 class="text-lg font-semibold mb-4">{{ $t('workflow.steps.diarization.results') }}</h3>
 
       <div
-        v-for="(result, audioId) in diarizationResults"
-        :key="audioId"
         class="mb-6 p-6 rounded-lg border"
         :class="[themeStore.isDark ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50']"
       >
-        <h4 class="font-semibold mb-4">{{ getAudioName(audioId) }}</h4>
+        <h4 class="font-semibold mb-4">{{ currentAudio?.name }}</h4>
 
-        <div class="space-y-2">
+        <!-- Audio Player with Regions -->
+        <div v-if="audioUrl" class="mb-6">
+          <AudioPlayerWithRegions
+            :audio-url="audioUrl"
+            :file-name="currentAudio?.name"
+            :regions="prepareRegions()"
+            :active-region-id="activeSegmentId"
+            @region-click="handleRegionClick"
+          />
+        </div>
+
+        <div class="space-y-2 max-h-96 overflow-y-auto">
           <div
-            v-for="segment in result"
+            v-for="segment in diarizationSegments"
             :key="segment.id"
-            class="flex items-center justify-between p-3 rounded-lg"
-            :class="[themeStore.isDark ? 'bg-gray-700' : 'bg-white']"
+            @click="setActiveSegment(segment.id)"
+            class="flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all"
+            :class="[
+              activeSegmentId === segment.id
+                ? 'bg-violet-600/30 border-2 border-violet-500 shadow-lg shadow-violet-500/50'
+                : themeStore.isDark
+                  ? 'bg-gray-700 hover:bg-gray-600'
+                  : 'bg-white hover:bg-gray-50',
+            ]"
           >
             <div class="flex items-center gap-4 flex-1">
               <div
@@ -137,18 +137,20 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { useThemeStore } from '@/stores/theme'
 import { useWorkflowStore } from '@/stores/workflow'
-import { diarizationApi } from '@/api/handlers'
+import { diarizationApi, audioApi } from '@/api/handlers'
+import AudioPlayerWithRegions from '@/components/AudioPlayerWithRegions.vue'
 
 const themeStore = useThemeStore()
 const workflowStore = useWorkflowStore()
 
-const audioFiles = ref([])
-const selectedAudioIds = ref([])
+const currentAudio = ref(null)
 const processing = ref(false)
-const diarizationResults = ref({})
+const diarizationSegments = ref([])
+const audioUrl = ref('')
+const activeSegmentId = ref(null)
 
 const speakerColors = [
   '#8B5CF6', // violet
@@ -162,31 +164,39 @@ const speakerColors = [
 ]
 
 onMounted(async () => {
-  // Отримуємо аудіофайли з попереднього кроку
+  // Отримуємо перший аудіофайл з попереднього кроку
   const uploadData = workflowStore.getStepData('upload')
-  if (uploadData?.audioFiles) {
-    audioFiles.value = uploadData.audioFiles
+  if (uploadData?.audioFiles && uploadData.audioFiles.length > 0) {
+    currentAudio.value = uploadData.audioFiles[0]
   }
 
   // Завантажуємо існуючу діаризацію
   await loadExistingDiarization()
+
+  // Завантажуємо аудіофайл для плеєра
+  await loadAudioFile()
+})
+
+onBeforeUnmount(() => {
+  // Очищаємо URL
+  if (audioUrl.value && audioUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(audioUrl.value)
+  }
 })
 
 async function loadExistingDiarization() {
   try {
+    if (!currentAudio.value) return
+
     const allDiarization = await diarizationApi.getAll()
 
-    // Групуємо діаризацію по аудіофайлах
-    audioFiles.value.forEach((audio) => {
-      const segments = allDiarization.filter((d) => d.forAudio === audio.id)
-      if (segments.length > 0) {
-        diarizationResults.value[audio.id] = segments
-      }
-    })
+    // Фільтруємо діаризацію для поточного аудіофайлу
+    const segments = allDiarization.filter((d) => d.forAudio === currentAudio.value.id)
+    diarizationSegments.value = segments
 
     // Якщо є результати, позначити крок як завершений
-    if (Object.keys(diarizationResults.value).length > 0) {
-      workflowStore.completeStep('diarization', { results: diarizationResults.value })
+    if (segments.length > 0) {
+      workflowStore.completeStep('diarization', { segments: segments })
     }
   } catch (error) {
     console.error('Error loading diarization:', error)
@@ -194,12 +204,12 @@ async function loadExistingDiarization() {
 }
 
 async function runDiarization() {
-  if (selectedAudioIds.value.length === 0) return
+  if (!currentAudio.value) return
 
   processing.value = true
   try {
     // Викликаємо API для діаризації
-    await diarizationApi.apply({ forAudio: selectedAudioIds.value })
+    await diarizationApi.apply({ forAudio: [currentAudio.value.id] })
 
     // Перезавантажуємо результати
     await loadExistingDiarization()
@@ -211,12 +221,58 @@ async function runDiarization() {
 }
 
 function completeStep() {
-  workflowStore.completeStep('diarization', { results: diarizationResults.value })
+  workflowStore.completeStep('diarization', { segments: diarizationSegments.value })
 }
 
-function getAudioName(audioId) {
-  const audio = audioFiles.value.find((a) => a.id === parseInt(audioId))
-  return audio?.name || 'Unknown'
+async function loadAudioFile() {
+  try {
+    if (!currentAudio.value) return
+
+    let fileName = currentAudio.value.fileName
+
+    if (!fileName) {
+      const audioInfo = await audioApi.getInfo(currentAudio.value.id)
+      fileName = audioInfo.fileName
+    }
+
+    if (!fileName) {
+      console.error('Could not determine file name for audio')
+      return
+    }
+
+    const blob = await audioApi.getFile(fileName)
+    audioUrl.value = URL.createObjectURL(blob)
+  } catch (error) {
+    console.error('Error loading audio file:', error)
+  }
+}
+
+function prepareRegions() {
+  return diarizationSegments.value.map((segment, index) => {
+    const speakerColor = getSpeakerColor(segment.speaker)
+    // Конвертуємо hex в rgba з більшою непрозорістю
+    const hex = speakerColor.replace('#', '')
+    const r = parseInt(hex.substring(0, 2), 16)
+    const g = parseInt(hex.substring(2, 4), 16)
+    const b = parseInt(hex.substring(4, 6), 16)
+
+    return {
+      id: segment.id,
+      startTime: segment.startTime,
+      endTime: segment.endTime,
+      label: `Speaker ${segment.speaker}`,
+      speaker: segment.speaker,
+      color: `rgba(${r}, ${g}, ${b}, 0.5)`,
+    }
+  })
+}
+
+function setActiveSegment(segmentId) {
+  activeSegmentId.value = activeSegmentId.value === segmentId ? null : segmentId
+}
+
+function handleRegionClick(region) {
+  setActiveSegment(region.id)
 }
 
 function getSpeakerColor(speaker) {

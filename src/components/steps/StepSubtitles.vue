@@ -71,12 +71,54 @@
       <span v-else>{{ $t('workflow.steps.subtitles.generate') }}</span>
     </button>
 
+    <!-- Processing Spinner -->
+    <div
+      v-if="processing"
+      class="mt-4 p-4 rounded-lg border flex items-center gap-3"
+      :class="[themeStore.isDark ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50']"
+    >
+      <svg class="animate-spin h-6 w-6 text-violet-600" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+        <path
+          class="opacity-75"
+          fill="currentColor"
+          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+        ></path>
+      </svg>
+      <span :class="[themeStore.isDark ? 'text-gray-300' : 'text-gray-700']">
+        Генерація субтитрів... Перевіряємо кожні 10 секунд
+      </span>
+    </div>
+
     <!-- Subtitles List -->
     <div v-if="Object.keys(subtitlesByAudio).length > 0" class="mt-8">
-      <h3 class="text-lg font-semibold mb-4">{{ $t('workflow.steps.subtitles.results') }}</h3>
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold">{{ $t('workflow.steps.subtitles.results') }}</h3>
+
+        <!-- Language Filter -->
+        <div class="flex items-center gap-2">
+          <label class="text-sm font-medium" :class="[themeStore.isDark ? 'text-gray-300' : 'text-gray-700']">
+            Фільтр по мові:
+          </label>
+          <select
+            v-model="selectedLanguage"
+            class="px-3 py-2 rounded-lg border text-sm transition-colors"
+            :class="[
+              themeStore.isDark
+                ? 'bg-gray-800 border-gray-700 text-white'
+                : 'bg-white border-gray-300 text-gray-900',
+            ]"
+          >
+            <option value="">Всі мови</option>
+            <option v-for="lang in availableLanguages" :key="lang" :value="lang">
+              {{ lang.toUpperCase() }}
+            </option>
+          </select>
+        </div>
+      </div>
 
       <div
-        v-for="(subs, audioId) in subtitlesByAudio"
+        v-for="(subs, audioId) in filteredSubtitlesByAudio"
         :key="audioId"
         class="mb-6 p-6 rounded-lg border"
         :class="[themeStore.isDark ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50']"
@@ -84,16 +126,34 @@
         <div class="flex justify-between items-center mb-4">
           <h4 class="font-semibold">{{ getAudioName(audioId) }}</h4>
           <span class="text-sm px-3 py-1 rounded-full bg-violet-600 text-white">
-            {{ subs.length }} {{ $t('workflow.steps.subtitles.subtitlesCount') }}
+            {{ subs.length }} субтитрів
           </span>
+        </div>
+
+        <!-- Audio Player with Regions -->
+        <div v-if="audioUrls[audioId]" class="mb-6">
+          <AudioPlayerWithRegions
+            :audio-url="audioUrls[audioId]"
+            :file-name="getAudioName(audioId)"
+            :regions="prepareRegions(subs)"
+            :active-region-id="activeSubtitleId"
+            @region-click="handleRegionClick"
+          />
         </div>
 
         <div class="space-y-2 max-h-96 overflow-y-auto">
           <div
             v-for="subtitle in subs"
             :key="subtitle.id"
-            class="p-3 rounded-lg"
-            :class="[themeStore.isDark ? 'bg-gray-700' : 'bg-white']"
+            @click="setActiveSubtitle(subtitle.id)"
+            class="p-3 rounded-lg cursor-pointer transition-all"
+            :class="[
+              activeSubtitleId === subtitle.id
+                ? 'bg-violet-600/30 border-2 border-violet-500 shadow-lg shadow-violet-500/50'
+                : themeStore.isDark
+                  ? 'bg-gray-700 hover:bg-gray-600'
+                  : 'bg-white hover:bg-gray-50',
+            ]"
           >
             <div class="flex justify-between items-start mb-2">
               <div class="flex items-center gap-2">
@@ -104,7 +164,40 @@
                   {{ formatTime(subtitle.startTime) }} - {{ formatTime(subtitle.endTime) }}
                 </span>
               </div>
+              <div v-if="editingSubtitleId === subtitle.id" class="flex gap-2">
+                <button
+                  @click="saveSubtitle(subtitle.id)"
+                  :disabled="savingSubtitle"
+                  class="p-1 rounded bg-green-600 hover:bg-green-700 disabled:bg-gray-500 transition-colors"
+                  title="Зберегти"
+                >
+                  <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                </button>
+                <button
+                  @click="cancelEdit"
+                  :disabled="savingSubtitle"
+                  class="p-1 rounded bg-gray-600 hover:bg-gray-700 disabled:bg-gray-500 transition-colors"
+                  title="Скасувати"
+                >
+                  <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </div>
               <button
+                v-else
                 @click="editSubtitle(subtitle)"
                 class="p-1 rounded hover:bg-gray-600 transition-colors"
               >
@@ -118,7 +211,20 @@
                 </svg>
               </button>
             </div>
-            <p class="text-sm">{{ subtitle.text }}</p>
+            <input
+              v-if="editingSubtitleId === subtitle.id"
+              v-model="editingSubtitleText"
+              type="text"
+              class="w-full px-3 py-2 text-sm rounded border transition-colors"
+              :class="[
+                themeStore.isDark
+                  ? 'bg-gray-800 border-gray-600 text-white'
+                  : 'bg-white border-gray-300 text-gray-900',
+              ]"
+              @keyup.enter="saveSubtitle(subtitle.id)"
+              @keyup.esc="cancelEdit"
+            />
+            <p v-else class="text-sm">{{ subtitle.text }}</p>
           </div>
         </div>
       </div>
@@ -135,10 +241,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, onBeforeUnmount } from 'vue'
 import { useThemeStore } from '@/stores/theme'
 import { useWorkflowStore } from '@/stores/workflow'
-import { subtitlesApi } from '@/api/handlers'
+import { subtitlesApi, audioApi } from '@/api/handlers'
+import AudioPlayerWithRegions from '@/components/AudioPlayerWithRegions.vue'
 
 const themeStore = useThemeStore()
 const workflowStore = useWorkflowStore()
@@ -147,6 +254,13 @@ const audioFiles = ref([])
 const selectedAudioIds = ref([])
 const processing = ref(false)
 const allSubtitles = ref([])
+const pollingInterval = ref(null)
+const selectedLanguage = ref('')
+const editingSubtitleId = ref(null)
+const editingSubtitleText = ref('')
+const savingSubtitle = ref(false)
+const audioUrls = ref({})
+const activeSubtitleId = ref(null)
 
 const subtitlesByAudio = computed(() => {
   const grouped = {}
@@ -157,6 +271,31 @@ const subtitlesByAudio = computed(() => {
     grouped[sub.forAudio].push(sub)
   })
   return grouped
+})
+
+const filteredSubtitlesByAudio = computed(() => {
+  if (!selectedLanguage.value) {
+    return subtitlesByAudio.value
+  }
+
+  const filtered = {}
+  Object.keys(subtitlesByAudio.value).forEach((audioId) => {
+    const subs = subtitlesByAudio.value[audioId].filter(
+      (sub) => sub.language === selectedLanguage.value,
+    )
+    if (subs.length > 0) {
+      filtered[audioId] = subs
+    }
+  })
+  return filtered
+})
+
+const availableLanguages = computed(() => {
+  const languages = new Set()
+  allSubtitles.value.forEach((sub) => {
+    languages.add(sub.language)
+  })
+  return Array.from(languages).sort()
 })
 
 const subtitleCounts = computed(() => {
@@ -176,6 +315,23 @@ onMounted(async () => {
 
   // Завантажуємо існуючі субтитри
   await loadExistingSubtitles()
+
+  // Завантажуємо аудіофайли для плеєра
+  await loadAudioFiles()
+})
+
+onBeforeUnmount(() => {
+  // Очищаємо інтервал при знищенні компонента
+  if (pollingInterval.value) {
+    clearInterval(pollingInterval.value)
+  }
+
+  // Очищаємо URLs
+  Object.values(audioUrls.value).forEach((url) => {
+    if (url && url.startsWith('blob:')) {
+      URL.revokeObjectURL(url)
+    }
+  })
 })
 
 async function loadExistingSubtitles() {
@@ -191,6 +347,42 @@ async function loadExistingSubtitles() {
   }
 }
 
+async function pollSubtitles() {
+  try {
+    // Перевіряємо чи з'явились субтитри для вибраних файлів
+    const subtitles = await subtitlesApi.getAll()
+    const hasNewSubtitles = selectedAudioIds.value.some((audioId) => {
+      const audioSubtitles = subtitles.filter((s) => s.forAudio === audioId)
+      const oldCount = subtitleCounts.value[audioId] || 0
+      return audioSubtitles.length > oldCount
+    })
+
+    if (hasNewSubtitles) {
+      // Знайдено нові субтитри, оновлюємо і зупиняємо поллінг
+      allSubtitles.value = subtitles
+      stopPolling()
+      processing.value = false
+      await loadAudioFiles()
+    }
+  } catch (error) {
+    console.error('Error polling subtitles:', error)
+  }
+}
+
+function startPolling() {
+  if (pollingInterval.value) {
+    clearInterval(pollingInterval.value)
+  }
+  pollingInterval.value = setInterval(pollSubtitles, 10000) // Кожні 10 секунд
+}
+
+function stopPolling() {
+  if (pollingInterval.value) {
+    clearInterval(pollingInterval.value)
+    pollingInterval.value = null
+  }
+}
+
 async function generateSubtitles() {
   if (selectedAudioIds.value.length === 0) return
 
@@ -199,12 +391,15 @@ async function generateSubtitles() {
     // Генеруємо субтитри для вибраних файлів
     await subtitlesApi.generate(selectedAudioIds.value)
 
-    // Перезавантажуємо субтитри
-    await loadExistingSubtitles()
+    // Запускаємо поллінг для перевірки появи субтитрів
+    startPolling()
+
+    // Також одразу перевіряємо
+    await pollSubtitles()
   } catch (error) {
     console.error('Error generating subtitles:', error)
-  } finally {
     processing.value = false
+    stopPolling()
   }
 }
 
@@ -225,7 +420,83 @@ function formatTime(seconds) {
 }
 
 function editSubtitle(subtitle) {
-  // TODO: Відкрити модальне вікно для редагування
-  console.log('Edit subtitle:', subtitle)
+  editingSubtitleId.value = subtitle.id
+  editingSubtitleText.value = subtitle.text
+}
+
+function cancelEdit() {
+  editingSubtitleId.value = null
+  editingSubtitleText.value = ''
+}
+
+async function saveSubtitle(subtitleId) {
+  if (!editingSubtitleText.value.trim()) {
+    return
+  }
+
+  savingSubtitle.value = true
+  try {
+    await subtitlesApi.update(subtitleId, { text: editingSubtitleText.value })
+
+    // Оновлюємо локальні дані
+    const subtitle = allSubtitles.value.find((s) => s.id === subtitleId)
+    if (subtitle) {
+      subtitle.text = editingSubtitleText.value
+    }
+
+    cancelEdit()
+  } catch (error) {
+    console.error('Error saving subtitle:', error)
+  } finally {
+    savingSubtitle.value = false
+  }
+}
+
+async function loadAudioFiles() {
+  // Завантажуємо аудіофайли для тих, у яких є субтитри
+  const audioIds = Object.keys(subtitlesByAudio.value)
+
+  for (const audioId of audioIds) {
+    try {
+      const audio = audioFiles.value.find((a) => a.id === parseInt(audioId))
+      if (!audio) continue
+
+      let fileName = audio.fileName
+
+      if (!fileName) {
+        const audioInfo = await audioApi.getInfo(audio.id)
+        fileName = audioInfo.fileName
+      }
+
+      if (!fileName) {
+        console.error('Could not determine file name for audio', audioId)
+        continue
+      }
+
+      const blob = await audioApi.getFile(fileName)
+      audioUrls.value[audioId] = URL.createObjectURL(blob)
+    } catch (error) {
+      console.error(`Error loading audio file ${audioId}:`, error)
+    }
+  }
+}
+
+function prepareRegions(subtitles) {
+  return subtitles.map((subtitle, index) => ({
+    id: subtitle.id,
+    startTime: subtitle.startTime,
+    endTime: subtitle.endTime,
+    label: subtitle.text,
+    text: subtitle.text,
+    color: 'rgba(139, 92, 246, 0.5)', // Фіолетовий колір для всіх субтитрів
+  }))
+}
+
+function setActiveSubtitle(subtitleId) {
+  activeSubtitleId.value = activeSubtitleId.value === subtitleId ? null : subtitleId
+}
+
+function handleRegionClick(region) {
+  setActiveSubtitle(region.id)
 }
 </script>

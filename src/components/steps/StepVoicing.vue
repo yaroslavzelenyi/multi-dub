@@ -2,219 +2,253 @@
   <div class="step-voicing">
     <h2 class="text-2xl font-bold mb-6">{{ $t('workflow.steps.voicing.title') }}</h2>
     <p class="mb-8" :class="[themeStore.isDark ? 'text-gray-400' : 'text-gray-600']">
-      {{ $t('workflow.steps.voicing.description') }}
+      Завантажте озвучені переклади субтитрів або запишіть їх через мікрофон, а потім прив'яжіть до потрібних місць у вихідному аудіо.
     </p>
 
-    <!-- Language Selection -->
-    <div class="mb-8">
-      <h3 class="text-lg font-semibold mb-4">{{ $t('workflow.steps.voicing.selectLanguage') }}</h3>
-      <select
-        v-model="selectedLanguage"
-        @change="loadSubtitlesForLanguage"
-        class="w-full px-4 py-3 rounded-lg border transition-colors"
-        :class="[
-          themeStore.isDark
-            ? 'bg-gray-800 border-gray-700 text-white'
-            : 'bg-white border-gray-300 text-gray-900',
-        ]"
+    <!-- Current Audio Info -->
+    <div v-if="currentAudio" class="mb-8">
+      <h3 class="text-lg font-semibold mb-4">Оригінальне аудіо</h3>
+      <div
+        class="flex items-center p-4 rounded-lg border"
+        :class="[themeStore.isDark ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50']"
       >
-        <option value="">{{ $t('workflow.steps.voicing.chooseLanguage') }}</option>
-        <option v-for="lang in availableLanguages" :key="lang" :value="lang">
-          {{ getLanguageName(lang) }}
-        </option>
-      </select>
+        <div class="flex-1">
+          <h4 class="font-medium">{{ currentAudio.name }}</h4>
+          <p class="text-sm" :class="[themeStore.isDark ? 'text-gray-400' : 'text-gray-600']">
+            {{ formatFileSize(currentAudio.size) }}
+          </p>
+        </div>
+      </div>
     </div>
 
-    <!-- Speaker Mapping -->
-    <div v-if="selectedLanguage && speakers.length > 0" class="mb-8">
-      <h3 class="text-lg font-semibold mb-4">{{ $t('workflow.steps.voicing.speakerMapping') }}</h3>
-      <p class="text-sm mb-4" :class="[themeStore.isDark ? 'text-gray-400' : 'text-gray-600']">
-        {{ $t('workflow.steps.voicing.speakerMappingDesc') }}
-      </p>
+    <!-- Audio Player with Regions and Subtitles -->
+    <div v-if="audioUrl && translatedSubtitles.length > 0" class="mb-8">
+      <h3 class="text-lg font-semibold mb-4">Перекладені субтитри</h3>
+      <div
+        class="p-6 rounded-lg border"
+        :class="[themeStore.isDark ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50']"
+      >
+        <!-- Audio Player with Regions -->
+        <div class="mb-6">
+          <AudioPlayerWithRegions
+            :audio-url="audioUrl"
+            :file-name="currentAudio?.name"
+            :regions="prepareRegions()"
+            :active-region-id="activeSubtitleId"
+            @region-click="handleRegionClick"
+          />
+        </div>
 
-      <div class="space-y-4">
-        <div
-          v-for="speaker in speakers"
-          :key="speaker"
-          class="p-4 rounded-lg border"
-          :class="[themeStore.isDark ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50']"
-        >
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-4">
-              <div
-                class="w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold"
-                :style="{ backgroundColor: getSpeakerColor(speaker) }"
-              >
-                {{ speaker }}
+        <!-- Subtitles List -->
+        <div class="space-y-2 max-h-96 overflow-y-auto">
+          <div
+            v-for="subtitle in translatedSubtitles"
+            :key="subtitle.id"
+            @click="toggleSubtitleSelection(subtitle.id)"
+            class="p-3 rounded-lg cursor-pointer transition-all"
+            :class="[
+              selectedSubtitles.includes(subtitle.id)
+                ? 'bg-violet-600/30 border-2 border-violet-500 shadow-lg shadow-violet-500/50'
+                : activeSubtitleId === subtitle.id
+                  ? 'bg-blue-600/20 border-2 border-blue-500'
+                  : themeStore.isDark
+                    ? 'bg-gray-700 hover:bg-gray-600'
+                    : 'bg-white hover:bg-gray-50',
+            ]"
+          >
+            <div class="flex justify-between items-start mb-2">
+              <div class="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  :checked="selectedSubtitles.includes(subtitle.id)"
+                  @click.stop="toggleSubtitleSelection(subtitle.id)"
+                  class="w-4 h-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
+                />
+                <span class="text-xs" :class="[themeStore.isDark ? 'text-gray-400' : 'text-gray-600']">
+                  {{ formatTime(subtitle.startTime) }} - {{ formatTime(subtitle.endTime) }}
+                </span>
               </div>
-              <div>
-                <h4 class="font-semibold">{{ $t('workflow.steps.voicing.speaker') }} {{ speaker }}</h4>
-                <p class="text-sm" :class="[themeStore.isDark ? 'text-gray-400' : 'text-gray-600']">
-                  {{ getSpeakerSubtitlesCount(speaker) }} {{ $t('workflow.steps.voicing.segments') }}
-                </p>
-              </div>
-            </div>
-            <div class="flex items-center gap-3">
-              <select
-                v-model="speakerVoices[speaker]"
-                class="px-4 py-2 rounded-lg border transition-colors"
-                :class="[
-                  themeStore.isDark
-                    ? 'bg-gray-700 border-gray-600 text-white'
-                    : 'bg-white border-gray-300 text-gray-900',
-                ]"
+              <span
+                v-if="getSubtitleMappings(subtitle.id).length > 0"
+                class="text-xs px-2 py-1 rounded-full bg-green-600 text-white"
               >
-                <option value="">{{ $t('workflow.steps.voicing.selectVoice') }}</option>
-                <option v-for="voice in availableVoices" :key="voice.id" :value="voice.id">
-                  {{ voice.name }} ({{ voice.gender }})
-                </option>
-              </select>
-              <button
-                v-if="speakerVoices[speaker]"
-                @click="previewVoice(speaker)"
-                class="p-2 rounded-lg transition-colors"
-                :class="[
-                  themeStore.isDark
-                    ? 'hover:bg-gray-700 text-gray-400 hover:text-white'
-                    : 'hover:bg-gray-200 text-gray-600 hover:text-gray-900',
-                ]"
-                :title="$t('workflow.steps.voicing.preview')"
-              >
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-                  />
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </button>
+                {{ getSubtitleMappings(subtitle.id).length }} озвучок
+              </span>
             </div>
+            <p class="text-sm">{{ subtitle.text }}</p>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Voicing Settings -->
-    <div v-if="selectedLanguage && allSpeakersHaveVoices" class="mb-8">
-      <h3 class="text-lg font-semibold mb-4">{{ $t('workflow.steps.voicing.settings') }}</h3>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label class="block text-sm font-medium mb-2">
-            {{ $t('workflow.steps.voicing.speed') }}
+    <!-- Upload or Record Audio -->
+    <div v-if="selectedSubtitles.length > 0" class="mb-8">
+      <h3 class="text-lg font-semibold mb-4">Озвучка вибраних субтитрів</h3>
+      <div
+        class="p-6 rounded-lg border"
+        :class="[themeStore.isDark ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50']"
+      >
+        <p class="mb-4" :class="[themeStore.isDark ? 'text-gray-400' : 'text-gray-600']">
+          Вибрано субтитрів: {{ selectedSubtitles.length }}
+        </p>
+
+        <div class="flex gap-4">
+          <label
+            class="flex-1 px-6 py-4 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-medium transition-colors cursor-pointer text-center"
+          >
+            <input
+              type="file"
+              accept="audio/*"
+              @change="handleAudioUpload"
+              class="hidden"
+              :disabled="uploading"
+            />
+            <span v-if="uploading">Завантаження...</span>
+            <span v-else>📁 Завантажити аудіо</span>
           </label>
-          <input
-            v-model.number="voicingSettings.speed"
-            type="range"
-            min="0.5"
-            max="2"
-            step="0.1"
-            class="w-full"
-          />
-          <div class="text-sm text-center mt-1" :class="[themeStore.isDark ? 'text-gray-400' : 'text-gray-600']">
-            {{ voicingSettings.speed }}x
-          </div>
+
+          <button
+            @click="startRecording"
+            class="flex-1 px-6 py-4 rounded-lg font-medium transition-colors"
+            :class="[
+              recording
+                ? 'bg-red-600 hover:bg-red-700 text-white'
+                : 'bg-blue-600 hover:bg-blue-700 text-white',
+            ]"
+          >
+            {{ recording ? '⏹️ Зупинити запис' : '🎤 Записати через мікрофон' }}
+          </button>
         </div>
-        <div>
-          <label class="block text-sm font-medium mb-2">
-            {{ $t('workflow.steps.voicing.pitch') }}
-          </label>
-          <input
-            v-model.number="voicingSettings.pitch"
-            type="range"
-            min="-12"
-            max="12"
-            step="1"
-            class="w-full"
-          />
-          <div class="text-sm text-center mt-1" :class="[themeStore.isDark ? 'text-gray-400' : 'text-gray-600']">
-            {{ voicingSettings.pitch > 0 ? '+' : '' }}{{ voicingSettings.pitch }}
+
+        <div v-if="recording" class="mt-4 p-4 bg-red-600/20 rounded-lg">
+          <div class="flex items-center gap-3">
+            <div class="w-3 h-3 bg-red-600 rounded-full animate-pulse"></div>
+            <span class="text-red-600 font-medium">Запис... {{ recordingTime }}с</span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Generate Voicing Button -->
-    <button
-      v-if="selectedLanguage && allSpeakersHaveVoices"
-      @click="generateVoicing"
-      :disabled="processing"
-      class="w-full px-6 py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2 mb-8"
-      :class="[
-        !processing
-          ? 'bg-violet-600 hover:bg-violet-700 text-white'
-          : 'bg-gray-700 text-gray-500 cursor-not-allowed',
-      ]"
-    >
-      <svg v-if="processing" class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-        <path
-          class="opacity-75"
-          fill="currentColor"
-          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-        ></path>
-      </svg>
-      <span v-if="processing">{{ $t('workflow.steps.voicing.generating') }}...</span>
-      <span v-else>{{ $t('workflow.steps.voicing.generate') }}</span>
-    </button>
-
-    <!-- Generated Voicing Results -->
-    <div v-if="generatedVoicing.length > 0" class="mb-8">
-      <h3 class="text-lg font-semibold mb-4">{{ $t('workflow.steps.voicing.results') }}</h3>
+    <!-- Created Mappings -->
+    <div v-if="mappings.length > 0" class="mb-8">
+      <h3 class="text-lg font-semibold mb-4">Створені маппінги ({{ mappings.length }})</h3>
       <div class="space-y-3">
         <div
-          v-for="voicing in generatedVoicing"
-          :key="voicing.id"
+          v-for="mapping in mappings"
+          :key="mapping.id"
           class="p-4 rounded-lg border flex justify-between items-center"
           :class="[themeStore.isDark ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50']"
         >
-          <div class="flex items-center gap-4">
-            <div
-              class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold"
-              :style="{ backgroundColor: getSpeakerColor(voicing.speaker) }"
-            >
-              {{ voicing.speaker }}
+          <div class="flex-1">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-xs px-2 py-1 rounded bg-violet-600 text-white">
+                Dubbed Audio #{{ mapping.fromAudio }}
+              </span>
+              <span class="text-xs" :class="[themeStore.isDark ? 'text-gray-400' : 'text-gray-600']">
+                {{ formatTime(mapping.fromStartTime) }} - {{ formatTime(mapping.fromEndTime) }}
+              </span>
             </div>
-            <div>
-              <h4 class="font-medium">{{ voicing.name }}</h4>
-              <p class="text-sm" :class="[themeStore.isDark ? 'text-gray-400' : 'text-gray-600']">
-                {{ $t('workflow.steps.voicing.speaker') }} {{ voicing.speaker }} • {{ formatFileSize(voicing.size) }}
-              </p>
+            <div class="flex items-center gap-2">
+              <span class="text-xs">→</span>
+              <span class="text-xs px-2 py-1 rounded bg-blue-600 text-white">
+                Original Audio
+              </span>
+              <span class="text-xs" :class="[themeStore.isDark ? 'text-gray-400' : 'text-gray-600']">
+                з {{ formatTime(mapping.toStartTime) }}
+              </span>
             </div>
           </div>
-          <div class="flex gap-2">
-            <button
-              @click="playVoicing(voicing)"
-              class="p-2 rounded-lg transition-colors"
-              :class="[
-                themeStore.isDark
-                  ? 'hover:bg-gray-700 text-gray-400 hover:text-white'
-                  : 'hover:bg-gray-200 text-gray-600 hover:text-gray-900',
-              ]"
-              :title="$t('common.play')"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-                />
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </button>
+          <button
+            @click="deleteMapping(mapping.id)"
+            class="p-2 rounded-lg transition-colors text-red-500 hover:bg-red-500/20"
+            title="Видалити"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Produce Final Audio -->
+    <div v-if="mappings.length > 0" class="mb-8">
+      <button
+        @click="produceOutput"
+        :disabled="producing"
+        class="w-full px-6 py-3 rounded-lg font-medium transition-all flex items-center justify-center gap-2"
+        :class="[
+          !producing
+            ? 'bg-green-600 hover:bg-green-700 text-white'
+            : 'bg-gray-700 text-gray-500 cursor-not-allowed',
+        ]"
+      >
+        <svg v-if="producing" class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="4"
+          ></circle>
+          <path
+            class="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          ></path>
+        </svg>
+        <span v-if="producing">Створення фінального аудіо...</span>
+        <span v-else>🎬 Створити фінальне аудіо</span>
+      </button>
+    </div>
+
+    <!-- Output Files -->
+    <div v-if="outputFiles.length > 0" class="mb-8">
+      <h3 class="text-lg font-semibold mb-4">Готові файли</h3>
+      <div class="space-y-3">
+        <div
+          v-for="output in outputFiles"
+          :key="output.id"
+          class="p-4 rounded-lg border flex justify-between items-center"
+          :class="[themeStore.isDark ? 'border-gray-700 bg-gray-800' : 'border-gray-200 bg-gray-50']"
+        >
+          <div>
+            <h4 class="font-medium">{{ output.name }}</h4>
+            <p class="text-sm" :class="[themeStore.isDark ? 'text-gray-400' : 'text-gray-600']">
+              {{ formatFileSize(output.size) }}
+            </p>
           </div>
+          <button
+            @click="playOutput(output)"
+            class="p-2 rounded-lg transition-colors"
+            :class="[
+              themeStore.isDark
+                ? 'hover:bg-gray-700 text-gray-400 hover:text-white'
+                : 'hover:bg-gray-200 text-gray-600 hover:text-gray-900',
+            ]"
+            title="Відтворити"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+              />
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          </button>
         </div>
       </div>
 
@@ -223,36 +257,13 @@
         @click="completeStep"
         class="mt-6 w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
       >
-        {{ $t('workflow.steps.voicing.complete') }}
+        Завершити крок
       </button>
-    </div>
-
-    <!-- Empty State -->
-    <div
-      v-if="!selectedLanguage"
-      class="text-center py-12"
-      :class="[themeStore.isDark ? 'text-gray-400' : 'text-gray-600']"
-    >
-      <svg
-        class="mx-auto h-16 w-16 mb-4"
-        :class="[themeStore.isDark ? 'text-gray-700' : 'text-gray-300']"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-        />
-      </svg>
-      <p>{{ $t('workflow.steps.voicing.selectLanguageFirst') }}</p>
     </div>
 
     <!-- Audio Player Modal -->
     <div
-      v-if="selectedAudio"
+      v-if="selectedOutput"
       class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
       @click.self="closeAudioPlayer"
     >
@@ -264,7 +275,7 @@
           class="flex items-center justify-between p-4 border-b"
           :class="[themeStore.isDark ? 'border-gray-700' : 'border-gray-200']"
         >
-          <h3 class="text-lg font-semibold">{{ selectedAudio.name }}</h3>
+          <h3 class="text-lg font-semibold">{{ selectedOutput.name }}</h3>
           <button
             @click="closeAudioPlayer"
             class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -280,7 +291,12 @@
           </button>
         </div>
         <div class="p-6">
-          <AudioPlayer v-if="audioUrl" :audio-url="audioUrl" :file-name="selectedAudio.name" />
+          <AudioPlayerWithRegions
+            v-if="outputAudioUrl"
+            :audio-url="outputAudioUrl"
+            :file-name="selectedOutput.name"
+            :regions="[]"
+          />
         </div>
       </div>
     </div>
@@ -291,43 +307,28 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useThemeStore } from '@/stores/theme'
 import { useWorkflowStore } from '@/stores/workflow'
-import { subtitlesApi, diarizationApi, voicingApi, audioApi } from '@/api/handlers'
-import AudioPlayer from '@/components/AudioPlayer.vue'
+import { subtitlesApi, audioApi, mappingsApi } from '@/api/handlers'
+import AudioPlayerWithRegions from '@/components/AudioPlayerWithRegions.vue'
 
 const themeStore = useThemeStore()
 const workflowStore = useWorkflowStore()
 
-const selectedLanguage = ref('')
-const availableLanguages = ref([])
-const speakers = ref([])
-const speakerVoices = ref({})
-const voicingSettings = ref({
-  speed: 1.0,
-  pitch: 0,
-})
-const processing = ref(false)
-const generatedVoicing = ref([])
-const selectedAudio = ref(null)
-const audioUrl = ref(null)
-const allSubtitles = ref([])
-
-const speakerColors = [
-  '#8B5CF6', '#EC4899', '#10B981', '#F59E0B',
-  '#3B82F6', '#EF4444', '#14B8A6', '#F97316',
-]
-
-const availableVoices = [
-  { id: 'voice-1', name: 'Олена', gender: 'Ж' },
-  { id: 'voice-2', name: 'Андрій', gender: 'Ч' },
-  { id: 'voice-3', name: 'Марія', gender: 'Ж' },
-  { id: 'voice-4', name: 'Дмитро', gender: 'Ч' },
-  { id: 'voice-5', name: 'Наталія', gender: 'Ж' },
-  { id: 'voice-6', name: 'Сергій', gender: 'Ч' },
-]
-
-const allSpeakersHaveVoices = computed(() => {
-  return speakers.value.every((speaker) => speakerVoices.value[speaker])
-})
+const currentAudio = ref(null)
+const translatedSubtitles = ref([])
+const selectedSubtitles = ref([])
+const activeSubtitleId = ref(null)
+const mappings = ref([])
+const outputFiles = ref([])
+const audioUrl = ref('')
+const uploading = ref(false)
+const recording = ref(false)
+const recordingTime = ref(0)
+const producing = ref(false)
+const mediaRecorder = ref(null)
+const recordedChunks = ref([])
+const recordingInterval = ref(null)
+const selectedOutput = ref(null)
+const outputAudioUrl = ref('')
 
 onMounted(async () => {
   await loadData()
@@ -337,127 +338,281 @@ onBeforeUnmount(() => {
   if (audioUrl.value && audioUrl.value.startsWith('blob:')) {
     URL.revokeObjectURL(audioUrl.value)
   }
+  if (outputAudioUrl.value && outputAudioUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(outputAudioUrl.value)
+  }
+  if (recordingInterval.value) {
+    clearInterval(recordingInterval.value)
+  }
 })
 
 async function loadData() {
   try {
-    // Завантажуємо перекладені субтитри
-    const translationData = workflowStore.getStepData('translation')
-    if (translationData?.languages) {
-      availableLanguages.value = translationData.languages
+    // Отримуємо перший аудіофайл з попереднього кроку
+    const uploadData = workflowStore.getStepData('upload')
+    if (uploadData?.audioFiles && uploadData.audioFiles.length > 0) {
+      currentAudio.value = uploadData.audioFiles[0]
     }
 
     // Завантажуємо всі субтитри
-    allSubtitles.value = await subtitlesApi.getAll()
+    const allSubtitles = await subtitlesApi.getAll()
 
-    // Якщо є тільки одна мова, вибираємо її автоматично
-    if (availableLanguages.value.length === 1) {
-      selectedLanguage.value = availableLanguages.value[0]
-      await loadSubtitlesForLanguage()
+    // Фільтруємо українські субтитри
+    translatedSubtitles.value = allSubtitles.filter(
+      (s) => s.language === 'uk' && s.forAudio === currentAudio.value?.id,
+    )
+
+    // Завантажуємо аудіофайл для плеєра
+    await loadAudioFile()
+
+    // Завантажуємо існуючі маппінги
+    if (currentAudio.value) {
+      mappings.value = await mappingsApi.getAllForFile(currentAudio.value.id)
     }
 
-    // Завантажуємо вже згенеровані озвучені файли якщо є
-    const dubbedFiles = await audioApi.getAllDubbed()
-    if (dubbedFiles.length > 0) {
-      generatedVoicing.value = dubbedFiles
-      workflowStore.completeStep('voicing', { voicing: generatedVoicing.value })
+    // Завантажуємо вихідні файли
+    if (currentAudio.value) {
+      outputFiles.value = await mappingsApi.getOutputsForAudio(currentAudio.value.id)
+      if (outputFiles.value.length > 0) {
+        workflowStore.completeStep('voicing', { outputs: outputFiles.value })
+      }
     }
   } catch (error) {
     console.error('Error loading data:', error)
   }
 }
 
-async function loadSubtitlesForLanguage() {
+async function loadAudioFile() {
   try {
-    // Завантажуємо діаризацію
-    const diarizations = await diarizationApi.getAll()
-    const uniqueSpeakers = new Set(diarizations.map((d) => d.speaker))
-    speakers.value = Array.from(uniqueSpeakers).sort()
+    if (!currentAudio.value) return
 
-    // Ініціалізуємо голоси для спікерів
-    speakers.value.forEach((speaker, index) => {
-      if (!speakerVoices.value[speaker]) {
-        speakerVoices.value[speaker] = availableVoices[index % availableVoices.length].id
-      }
-    })
+    let fileName = currentAudio.value.fileName
+
+    if (!fileName) {
+      const audioInfo = await audioApi.getInfo(currentAudio.value.id)
+      fileName = audioInfo.fileName
+    }
+
+    if (!fileName) {
+      console.error('Could not determine file name for audio')
+      return
+    }
+
+    const blob = await audioApi.getFile(fileName)
+    audioUrl.value = URL.createObjectURL(blob)
   } catch (error) {
-    console.error('Error loading subtitles:', error)
+    console.error('Error loading audio file:', error)
   }
 }
 
-function getSpeakerSubtitlesCount(speaker) {
-  return allSubtitles.value.filter((s) => s.language === selectedLanguage.value).length
+function prepareRegions() {
+  return translatedSubtitles.value.map((subtitle) => ({
+    id: subtitle.id,
+    startTime: subtitle.startTime,
+    endTime: subtitle.endTime,
+    label: subtitle.text,
+    text: subtitle.text,
+    color: 'rgba(139, 92, 246, 0.5)',
+  }))
 }
 
-function getSpeakerColor(speaker) {
-  const speakerNum = parseInt(speaker.replace(/\D/g, '')) || 0
-  return speakerColors[speakerNum % speakerColors.length]
+function handleRegionClick(region) {
+  activeSubtitleId.value = activeSubtitleId.value === region.id ? null : region.id
 }
 
-function getLanguageName(code) {
-  const names = {
-    en: 'English',
-    uk: 'Українська',
-
+function toggleSubtitleSelection(subtitleId) {
+  const index = selectedSubtitles.value.indexOf(subtitleId)
+  if (index > -1) {
+    selectedSubtitles.value.splice(index, 1)
+  } else {
+    selectedSubtitles.value.push(subtitleId)
   }
-  return names[code] || code.toUpperCase()
 }
 
-async function generateVoicing() {
-  processing.value = true
+function getSubtitleMappings(subtitleId) {
+  const subtitle = translatedSubtitles.value.find((s) => s.id === subtitleId)
+  if (!subtitle) return []
+
+  return mappings.value.filter(
+    (m) => m.toStartTime >= subtitle.startTime && m.toStartTime < subtitle.endTime,
+  )
+}
+
+async function handleAudioUpload(event) {
+  const file = event.target.files[0]
+  if (!file) return
+
   try {
-    // Тут має бути логіка генерації озвучення через TTS API
-    // Поки що створюємо mock дані
-    const mockVoicing = speakers.value.map((speaker, index) => ({
-      id: Date.now() + index,
-      name: `${getLanguageName(selectedLanguage.value)}_${speaker}.wav`,
-      speaker: speaker,
-      voice: speakerVoices.value[speaker],
-      size: Math.random() * 1000000 + 500000,
-      type: 'dubbed',
-    }))
+    uploading.value = true
 
-    generatedVoicing.value = mockVoicing
+    // Завантажуємо файл як dubbed audio
+    const dubbedAudio = await audioApi.uploadDubbed(file)
 
-    // Тут має бути реальний API виклик для генерації озвучення
-    // await voicingApi.generateVoicing({ ... })
+    // Створюємо маппінги для кожного вибраного субтитру
+    for (const subtitleId of selectedSubtitles.value) {
+      const subtitle = translatedSubtitles.value.find((s) => s.id === subtitleId)
+      if (!subtitle) continue
+
+      const mapping = await mappingsApi.create({
+        fromAudio: dubbedAudio.id,
+        fromStartTime: 0,
+        fromEndTime: dubbedAudio.duration || subtitle.endTime - subtitle.startTime,
+        toAudio: currentAudio.value.id,
+        toStartTime: subtitle.startTime,
+      })
+
+      mappings.value.push(mapping)
+    }
+
+    // Очищаємо вибір
+    selectedSubtitles.value = []
+    event.target.value = ''
   } catch (error) {
-    console.error('Error generating voicing:', error)
+    console.error('Error uploading audio:', error)
   } finally {
-    processing.value = false
+    uploading.value = false
   }
 }
 
-function previewVoice(speaker) {
-  console.log('Preview voice for speaker:', speaker, speakerVoices.value[speaker])
-  // Тут має бути логіка попереднього прослуховування голосу
+async function startRecording() {
+  if (recording.value) {
+    stopRecording()
+    return
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    mediaRecorder.value = new MediaRecorder(stream)
+    recordedChunks.value = []
+
+    mediaRecorder.value.ondataavailable = (event) => {
+      if (event.data.size > 0) {
+        recordedChunks.value.push(event.data)
+      }
+    }
+
+    mediaRecorder.value.onstop = async () => {
+      const blob = new Blob(recordedChunks.value, { type: 'audio/webm' })
+      const file = new File([blob], `recording-${Date.now()}.webm`, { type: 'audio/webm' })
+
+      // Завантажуємо запис
+      await uploadRecordedAudio(file)
+
+      // Зупиняємо всі треки
+      stream.getTracks().forEach((track) => track.stop())
+    }
+
+    mediaRecorder.value.start()
+    recording.value = true
+    recordingTime.value = 0
+
+    recordingInterval.value = setInterval(() => {
+      recordingTime.value++
+    }, 1000)
+  } catch (error) {
+    console.error('Error starting recording:', error)
+  }
 }
 
-async function playVoicing(voicing) {
+function stopRecording() {
+  if (mediaRecorder.value && recording.value) {
+    mediaRecorder.value.stop()
+    recording.value = false
+    if (recordingInterval.value) {
+      clearInterval(recordingInterval.value)
+    }
+  }
+}
+
+async function uploadRecordedAudio(file) {
   try {
-    selectedAudio.value = voicing
-    // Тут має бути завантаження реального аудіофайлу
-    // const blob = await audioApi.getFile(voicing.fileName)
-    // audioUrl.value = URL.createObjectURL(blob)
+    uploading.value = true
+
+    // Завантажуємо файл як dubbed audio
+    const dubbedAudio = await audioApi.uploadDubbed(file)
+
+    // Створюємо маппінги для кожного вибраного субтитру
+    for (const subtitleId of selectedSubtitles.value) {
+      const subtitle = translatedSubtitles.value.find((s) => s.id === subtitleId)
+      if (!subtitle) continue
+
+      const mapping = await mappingsApi.create({
+        fromAudio: dubbedAudio.id,
+        fromStartTime: 0,
+        fromEndTime: dubbedAudio.duration || subtitle.endTime - subtitle.startTime,
+        toAudio: currentAudio.value.id,
+        toStartTime: subtitle.startTime,
+      })
+
+      mappings.value.push(mapping)
+    }
+
+    // Очищаємо вибір
+    selectedSubtitles.value = []
   } catch (error) {
-    console.error('Error playing voicing:', error)
+    console.error('Error uploading recorded audio:', error)
+  } finally {
+    uploading.value = false
+  }
+}
+
+async function deleteMapping(mappingId) {
+  try {
+    await mappingsApi.delete(mappingId)
+    mappings.value = mappings.value.filter((m) => m.id !== mappingId)
+  } catch (error) {
+    console.error('Error deleting mapping:', error)
+  }
+}
+
+async function produceOutput() {
+  if (!currentAudio.value) return
+
+  try {
+    producing.value = true
+    await mappingsApi.produceOutput(currentAudio.value.id)
+
+    // Перезавантажуємо вихідні файли
+    outputFiles.value = await mappingsApi.getOutputsForAudio(currentAudio.value.id)
+  } catch (error) {
+    console.error('Error producing output:', error)
+  } finally {
+    producing.value = false
+  }
+}
+
+async function playOutput(output) {
+  try {
+    selectedOutput.value = output
+
+    // Завантажуємо аудіофайл
+    const blob = await audioApi.getFile(output.fileName)
+    outputAudioUrl.value = URL.createObjectURL(blob)
+  } catch (error) {
+    console.error('Error playing output:', error)
   }
 }
 
 function closeAudioPlayer() {
-  if (audioUrl.value && audioUrl.value.startsWith('blob:')) {
-    URL.revokeObjectURL(audioUrl.value)
+  if (outputAudioUrl.value && outputAudioUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(outputAudioUrl.value)
   }
-  selectedAudio.value = null
-  audioUrl.value = null
+  selectedOutput.value = null
+  outputAudioUrl.value = ''
 }
 
 function completeStep() {
   workflowStore.completeStep('voicing', {
-    voicing: generatedVoicing.value,
-    settings: voicingSettings.value,
-    speakerVoices: speakerVoices.value,
+    mappings: mappings.value,
+    outputs: outputFiles.value,
   })
+}
+
+function formatTime(seconds) {
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  const ms = Math.floor((seconds % 1) * 1000)
+  return `${mins}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`
 }
 
 function formatFileSize(bytes) {

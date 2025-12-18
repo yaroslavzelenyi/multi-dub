@@ -1,0 +1,538 @@
+<template>
+  <div
+    :class="[
+      'rounded-lg overflow-hidden transition-colors duration-200',
+      themeStore.isDark
+        ? 'bg-gray-800/50 border border-gray-700'
+        : 'bg-white border border-gray-200 shadow-sm',
+    ]"
+  >
+    <div class="p-6 pb-4">
+      <div ref="waveformRef" class="waveform-container h-32 mb-4 rounded-lg relative"></div>
+
+      <div
+        :class="[
+          'flex justify-between text-sm transition-colors',
+          themeStore.isDark ? 'text-gray-400' : 'text-gray-600',
+        ]"
+      >
+        <span>{{ formatTime(currentTime) }}</span>
+        <span>{{ formatTime(duration) }}</span>
+      </div>
+    </div>
+
+    <div
+      :class="[
+        'border-t px-6 py-4 transition-colors duration-200',
+        themeStore.isDark ? 'bg-gray-900/50 border-gray-700' : 'bg-gray-50 border-gray-200',
+      ]"
+    >
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <button
+            @click="togglePlayPause"
+            :disabled="!isReady"
+            class="w-12 h-12 flex items-center justify-center bg-violet-600 hover:bg-violet-700 disabled:bg-gray-300 disabled:cursor-not-allowed rounded-full transition-colors"
+          >
+            <svg
+              v-if="!isPlaying"
+              class="w-5 h-5 text-white ml-0.5"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path d="M8 5v14l11-7z" />
+            </svg>
+            <svg v-else class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+            </svg>
+          </button>
+
+          <button
+            @click="stop"
+            :disabled="!isReady"
+            :class="[
+              'w-10 h-10 flex items-center justify-center rounded-lg transition-colors disabled:cursor-not-allowed',
+              themeStore.isDark
+                ? 'bg-gray-800 hover:bg-gray-700 disabled:bg-gray-800'
+                : 'bg-white hover:bg-gray-100 disabled:bg-gray-100 border border-gray-300',
+            ]"
+          >
+            <svg
+              :class="[
+                'w-4 h-4 transition-colors',
+                themeStore.isDark ? 'text-gray-300' : 'text-gray-600',
+              ]"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path d="M6 6h12v12H6z" />
+            </svg>
+          </button>
+
+          <button
+            @click="skipBackward"
+            :disabled="!isReady"
+            :class="[
+              'w-10 h-10 flex items-center justify-center rounded-lg transition-colors disabled:cursor-not-allowed',
+              themeStore.isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-200',
+            ]"
+          >
+            <svg
+              :class="[
+                'w-5 h-5 transition-colors',
+                themeStore.isDark ? 'text-gray-300' : 'text-gray-600',
+              ]"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path d="M11 18V6l-8.5 6 8.5 6zm.5-6l8.5 6V6l-8.5 6z" />
+            </svg>
+          </button>
+
+          <button
+            @click="skipForward"
+            :disabled="!isReady"
+            :class="[
+              'w-10 h-10 flex items-center justify-center rounded-lg transition-colors disabled:cursor-not-allowed',
+              themeStore.isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-200',
+            ]"
+          >
+            <svg
+              :class="[
+                'w-5 h-5 transition-colors',
+                themeStore.isDark ? 'text-gray-300' : 'text-gray-600',
+              ]"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path d="M4 18l8.5-6L4 6v12zm9-12v12l8.5-6L13 6z" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="flex items-center space-x-2">
+          <button
+            v-for="speed in playbackSpeeds"
+            :key="speed"
+            @click="setPlaybackSpeed(speed)"
+            :class="[
+              'px-3 py-1.5 text-sm font-medium rounded-lg transition-colors',
+              playbackSpeed === speed
+                ? 'bg-violet-600 text-white'
+                : themeStore.isDark
+                  ? 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+                  : 'bg-white hover:bg-gray-100 text-gray-700 border border-gray-300',
+            ]"
+          >
+            {{ speed }}x
+          </button>
+        </div>
+
+        <div class="flex items-center space-x-3">
+          <div class="flex items-center space-x-2">
+            <button
+              @click="toggleMute"
+              :class="[
+                'w-10 h-10 flex items-center justify-center rounded-lg transition-colors',
+                themeStore.isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-200',
+              ]"
+            >
+              <svg
+                v-if="!isMuted && volume > 0.5"
+                :class="[
+                  'w-5 h-5 transition-colors',
+                  themeStore.isDark ? 'text-gray-300' : 'text-gray-600',
+                ]"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"
+                />
+              </svg>
+              <svg
+                v-else-if="!isMuted && volume > 0"
+                :class="[
+                  'w-5 h-5 transition-colors',
+                  themeStore.isDark ? 'text-gray-300' : 'text-gray-600',
+                ]"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path d="M7 9v6h4l5 5V4l-5 5H7z" />
+              </svg>
+              <svg
+                v-else
+                :class="[
+                  'w-5 h-5 transition-colors',
+                  themeStore.isDark ? 'text-gray-300' : 'text-gray-600',
+                ]"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"
+                />
+              </svg>
+            </button>
+            <input
+              v-model.number="volume"
+              @input="updateVolume"
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              :class="[
+                'w-24 h-1 rounded-lg appearance-none cursor-pointer accent-violet-600 transition-colors',
+                themeStore.isDark ? 'bg-gray-700' : 'bg-gray-300',
+              ]"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div
+        v-if="isLoading"
+        :class="[
+          'mt-4 flex items-center justify-center space-x-2 text-sm transition-colors',
+          themeStore.isDark ? 'text-gray-400' : 'text-gray-600',
+        ]"
+      >
+        <svg
+          class="animate-spin h-4 w-4"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="4"
+          ></circle>
+          <path
+            class="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          ></path>
+        </svg>
+        <span>Loading...</span>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
+import { useThemeStore } from '@/stores/theme'
+import WaveSurfer from 'wavesurfer.js'
+import RegionsPlugin from 'wavesurfer.js/dist/plugins/regions.esm.js'
+
+const themeStore = useThemeStore()
+
+const props = defineProps({
+  audioUrl: {
+    type: String,
+    required: true,
+  },
+  fileName: {
+    type: String,
+    default: 'audio.mp3',
+  },
+  regions: {
+    type: Array,
+    default: () => [],
+  },
+  activeRegionId: {
+    type: [Number, String],
+    default: null,
+  },
+})
+
+const emit = defineEmits(['region-click'])
+
+const waveformRef = ref(null)
+const wavesurfer = ref(null)
+const regionsPlugin = ref(null)
+const isPlaying = ref(false)
+const isReady = ref(false)
+const isLoading = ref(true)
+const currentTime = ref(0)
+const duration = ref(0)
+const volume = ref(0.7)
+const isMuted = ref(false)
+const playbackSpeed = ref(1)
+const playbackSpeeds = [0.5, 0.75, 1, 1.25, 1.5, 2]
+
+const getWaveformColors = () => {
+  if (themeStore.isDark) {
+    return {
+      waveColor: '#4b5563',
+      progressColor: '#8b5cf6',
+      cursorColor: '#3b82f6',
+    }
+  } else {
+    return {
+      waveColor: '#d1d5db',
+      progressColor: '#8b5cf6',
+      cursorColor: '#3b82f6',
+    }
+  }
+}
+
+const initWaveSurfer = () => {
+  if (!waveformRef.value) return
+
+  const colors = getWaveformColors()
+
+  // Створюємо regions plugin
+  regionsPlugin.value = RegionsPlugin.create()
+
+  wavesurfer.value = WaveSurfer.create({
+    container: waveformRef.value,
+    waveColor: colors.waveColor,
+    progressColor: colors.progressColor,
+    cursorColor: colors.cursorColor,
+    barWidth: 2,
+    barRadius: 3,
+    cursorWidth: 2,
+    height: 128,
+    barGap: 2,
+    normalize: true,
+    backend: 'WebAudio',
+    plugins: [regionsPlugin.value],
+  })
+
+  wavesurfer.value.on('ready', () => {
+    isLoading.value = false
+    isReady.value = true
+    duration.value = wavesurfer.value.getDuration()
+    wavesurfer.value.setVolume(volume.value)
+
+    // Додаємо регіони після завантаження
+    addRegions()
+  })
+
+  wavesurfer.value.on('play', () => {
+    isPlaying.value = true
+  })
+
+  wavesurfer.value.on('pause', () => {
+    isPlaying.value = false
+  })
+
+  wavesurfer.value.on('finish', () => {
+    isPlaying.value = false
+  })
+
+  wavesurfer.value.on('audioprocess', () => {
+    currentTime.value = wavesurfer.value.getCurrentTime()
+  })
+
+  wavesurfer.value.on('seek', () => {
+    currentTime.value = wavesurfer.value.getCurrentTime()
+  })
+
+  wavesurfer.value.on('error', (error) => {
+    console.error('WaveSurfer error:', error)
+    isLoading.value = false
+  })
+
+  wavesurfer.value.load(props.audioUrl)
+}
+
+const addRegions = () => {
+  if (!regionsPlugin.value || !props.regions.length) return
+
+  // Очищаємо старі регіони
+  regionsPlugin.value.clearRegions()
+
+  // Додаємо нові регіони
+  props.regions.forEach((region, index) => {
+    // Визначаємо чи це активний регіон
+    const isActive = region.id === props.activeRegionId
+
+    // Базовий колір з напівпрозорістю
+    let baseColor = region.color || `rgba(${139 + index * 5}, ${92 + index * 3}, 246, 0.5)`
+
+    // Якщо регіон активний, робимо його яскравішим
+    if (isActive) {
+      // Парсимо rgba колір та збільшуємо альфа-канал
+      const rgbaMatch = baseColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/)
+      if (rgbaMatch) {
+        const [, r, g, b] = rgbaMatch
+        baseColor = `rgba(${r}, ${g}, ${b}, 0.85)`
+      }
+    }
+
+    const regionObj = regionsPlugin.value.addRegion({
+      start: region.startTime,
+      end: region.endTime,
+      color: baseColor,
+      drag: false,
+      resize: false,
+      id: region.id || `region-${index}`,
+    })
+
+    // Додаємо tooltip через mouseover
+    if (regionObj.element) {
+      regionObj.element.title = region.label || region.text || region.speaker || ''
+      regionObj.element.style.cursor = 'pointer'
+
+      // Додаємо обробник кліку
+      regionObj.element.addEventListener('click', () => {
+        emit('region-click', region)
+      })
+    }
+  })
+}
+
+const updateWaveformColors = () => {
+  if (wavesurfer.value) {
+    const colors = getWaveformColors()
+    wavesurfer.value.setOptions({
+      waveColor: colors.waveColor,
+      progressColor: colors.progressColor,
+      cursorColor: colors.cursorColor,
+    })
+  }
+}
+
+const togglePlayPause = () => {
+  if (wavesurfer.value) {
+    wavesurfer.value.playPause()
+  }
+}
+
+const stop = () => {
+  if (wavesurfer.value) {
+    wavesurfer.value.stop()
+    isPlaying.value = false
+  }
+}
+
+const skipBackward = () => {
+  if (wavesurfer.value) {
+    wavesurfer.value.skip(-5)
+  }
+}
+
+const skipForward = () => {
+  if (wavesurfer.value) {
+    wavesurfer.value.skip(5)
+  }
+}
+
+const updateVolume = () => {
+  if (wavesurfer.value) {
+    wavesurfer.value.setVolume(volume.value)
+    isMuted.value = volume.value === 0
+  }
+}
+
+const toggleMute = () => {
+  if (wavesurfer.value) {
+    if (isMuted.value) {
+      volume.value = 0.7
+      wavesurfer.value.setVolume(0.7)
+      isMuted.value = false
+    } else {
+      volume.value = 0
+      wavesurfer.value.setVolume(0)
+      isMuted.value = true
+    }
+  }
+}
+
+const setPlaybackSpeed = (speed) => {
+  if (wavesurfer.value) {
+    playbackSpeed.value = speed
+    wavesurfer.value.setPlaybackRate(speed)
+  }
+}
+
+const formatTime = (seconds) => {
+  if (!seconds || isNaN(seconds)) return '0:00'
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins}:${secs.toString().padStart(2, '0')}`
+}
+
+watch(
+  () => themeStore.isDark,
+  () => {
+    updateWaveformColors()
+  },
+)
+
+watch(
+  () => props.audioUrl,
+  () => {
+    if (wavesurfer.value && props.audioUrl) {
+      isLoading.value = true
+      isReady.value = false
+      wavesurfer.value.load(props.audioUrl)
+    }
+  },
+)
+
+watch(
+  () => props.regions,
+  () => {
+    if (isReady.value) {
+      addRegions()
+    }
+  },
+  { deep: true },
+)
+
+watch(
+  () => props.activeRegionId,
+  () => {
+    if (isReady.value) {
+      addRegions()
+    }
+  },
+)
+
+onMounted(() => {
+  initWaveSurfer()
+})
+
+onBeforeUnmount(() => {
+  if (wavesurfer.value) {
+    wavesurfer.value.destroy()
+  }
+})
+
+defineExpose({
+  stop,
+  wavesurfer,
+})
+</script>
+
+<style scoped>
+input[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #8b5cf6;
+  cursor: pointer;
+}
+
+input[type='range']::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #8b5cf6;
+  cursor: pointer;
+  border: none;
+}
+
+.waveform-container {
+  transition: background-color 0.2s ease;
+}
+</style>
